@@ -1,28 +1,30 @@
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+
 dotenv.config({
 	path: "./.env",
 });
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "21a91a0547@aec.edu.in";
+const SMTP_HOST = process.env.SMTP_HOST?.trim();
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+const SMTP_SECURE = String(process.env.SMTP_SECURE || "false").toLowerCase() === "true";
 
-const sendOtpMail = async (to, otp) => {
+const createTransporter = () => {
 	const mailId = process.env.MAIL_ID?.trim();
 	const mailPassword = process.env.MAIL_PASSWORD?.trim();
-	
+
 	if (!mailId || !mailPassword) {
-		console.log(`Email not configured. OTP for ${to}: ${otp}`);
-		return { sent: false, otp };
+		return null;
 	}
 
-	try {
-		const cleanPassword = mailPassword.replace(/\s/g, ''); // Remove spaces from App Password
-		
-		const transporter = nodemailer.createTransport({
-			service: "gmail", // Using Gmail as the email service
-			secure: true,
-			port: 465,
-			// Disable verbose debug logs (set to true if you need to troubleshoot)
+	const cleanPassword = mailPassword.replace(/\s/g, "");
+
+	if (SMTP_HOST) {
+		return nodemailer.createTransport({
+			host: SMTP_HOST,
+			port: SMTP_PORT,
+			secure: SMTP_SECURE,
 			logger: false,
 			debug: false,
 			auth: {
@@ -30,16 +32,40 @@ const sendOtpMail = async (to, otp) => {
 				pass: cleanPassword,
 			},
 		});
+	}
 
-		// Verify connection before sending
+	return nodemailer.createTransport({
+		service: "gmail",
+		secure: true,
+		port: 465,
+		logger: false,
+		debug: false,
+		auth: {
+			user: mailId,
+			pass: cleanPassword,
+		},
+	});
+};
+
+const sendOtpMail = async (to, otp) => {
+	const mailId = process.env.MAIL_ID?.trim();
+	const mailPassword = process.env.MAIL_PASSWORD?.trim();
+
+	if (!mailId || !mailPassword) {
+		console.log(`Email not configured. OTP for ${to}: ${otp}`);
+		return { sent: false, otp };
+	}
+
+	try {
+		const transporter = createTransporter();
 		await transporter.verify();
 
 		const info = await transporter.sendMail({
-			from: `"Personal AI Assistant" <${mailId}>`, // Sender address with name
-			to, // Recipient
+			from: `"Personal AI Assistant" <${mailId}>`,
+			to,
 			replyTo: SUPPORT_EMAIL,
-			subject: "Your OTP Code for Secure Login", // Professional subject line
-			text: `Dear user,\n\nYour One-Time Password (OTP) is: ${otp}\n\nThis code is valid for 10 minutes. Please do not share it with anyone.\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nPAT @ PERSONAL AI TUTOR PVT. LTD.`, // Plain text fallback
+			subject: "Your OTP Code for Secure Login",
+			text: `Dear user,\n\nYour One-Time Password (OTP) is: ${otp}\n\nThis code is valid for 10 minutes. Please do not share it with anyone.\n\nIf you did not request this, please ignore this email.\n\nBest regards,\nPAT @ PERSONAL AI TUTOR PVT. LTD.`,
 			html: `
 			<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
 				<h2 style="color: #0d6efd;">Your One-Time Password (OTP)</h2>
@@ -52,31 +78,17 @@ const sendOtpMail = async (to, otp) => {
 				<p>Best regards,</p>
 				<p><strong>Personal AI Assistant</strong></p>
 			</div>
-		  `, // HTML body
+		  `,
 		});
 
 		console.log(`OTP Email sent successfully to ${to}. Message ID: ${info.messageId}`);
 		return { sent: true };
 	} catch (error) {
 		console.error(`❌ Error sending OTP email to ${to}:`, error.message);
-		
-		// Provide helpful error messages
-		if (error.message.includes('BadCredentials') || error.message.includes('535')) {
-			console.error(`\n⚠️  GMAIL AUTHENTICATION ERROR:`);
-			console.error(`   The App Password for ${mailId} is incorrect or not set up.`);
-			console.error(`   Steps to fix:`);
-			console.error(`   1. Go to: https://myaccount.google.com/apppasswords`);
-			console.error(`   2. Generate a new App Password for "Mail"`);
-			console.error(`   3. Update MAIL_PASSWORD in your .env file`);
-			console.error(`   4. Restart the server\n`);
-		}
-		
 		console.log(`OTP for ${to}: ${otp} (email sending failed)`);
 		return { sent: false, otp, error: error.message };
 	}
 };
-
-export { sendOtpMail };
 
 const sendResetMail = async (to, token) => {
 	const mailId = process.env.MAIL_ID?.trim();
@@ -88,26 +100,17 @@ const sendResetMail = async (to, token) => {
 	}
 
 	try {
-		const cleanPassword = mailPassword.replace(/\s/g, '');
-		const transporter = nodemailer.createTransport({
-			service: 'gmail',
-			secure: true,
-			port: 465,
-			logger: false,
-			debug: false,
-			auth: { user: mailId, pass: cleanPassword },
-		});
-
+		const transporter = createTransporter();
 		await transporter.verify();
 
-		const frontend = process.env.FRONTEND_URL || 'http://localhost:5173';
+		const frontend = process.env.FRONTEND_URL || "http://localhost:5173";
 		const resetUrl = `${frontend}/reset-password?token=${token}`;
 
 		const info = await transporter.sendMail({
 			from: `"Personal AI Assistant" <${mailId}>`,
 			to,
 			replyTo: SUPPORT_EMAIL,
-			subject: 'Password Reset Instructions',
+			subject: "Password Reset Instructions",
 			text: `You requested a password reset. Use this link: ${resetUrl}`,
 			html: `
 			<div style="font-family: Arial, sans-serif; line-height:1.6; color:#333;">
@@ -128,54 +131,43 @@ const sendResetMail = async (to, token) => {
 	}
 };
 
-export { sendResetMail };
-
 const sendContactMail = async (to, name) => {
-    const mailId = process.env.MAIL_ID?.trim();
-    const mailPassword = process.env.MAIL_PASSWORD?.trim();
+	const mailId = process.env.MAIL_ID?.trim();
+	const mailPassword = process.env.MAIL_PASSWORD?.trim();
 
-    if (!mailId || !mailPassword) {
-        console.log(`⚠️  Email not configured. Contact confirmation for ${to}`);
-        return;
-    }
+	if (!mailId || !mailPassword) {
+		console.log(`⚠️  Email not configured. Contact confirmation for ${to}`);
+		return;
+	}
 
-    try {
-        const cleanPassword = mailPassword.replace(/\s/g, '');
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            secure: true,
-            port: 465,
-            logger: false,
-            debug: false,
-            auth: { user: mailId, pass: cleanPassword },
-        });
+	try {
+		const transporter = createTransporter();
+		await transporter.verify();
 
-        await transporter.verify();
-
-        const info = await transporter.sendMail({
-            from: `"Personal AI Assistant" <${mailId}>`,
-            to,
-            replyTo: SUPPORT_EMAIL,
-            subject: 'We received your message',
-            text: `Hi ${name},\n\nThank you for reaching out to us. We have received your message and will get back to you as soon as possible.\n\nBest regards,\nPAT Team`,
-            html: `
-            <div style="font-family: Arial, sans-serif; line-height:1.6; color:#333;">
-              <h2>Thank You for Contacting Us!</h2>
-              <p>Hi ${name},</p>
-              <p>We have received your message and appreciate you taking the time to reach out to us.</p>
-              <p>Our team will review your inquiry and respond within 24-48 hours.</p>
-              <br>
-              <p>Best regards,</p>
+		const info = await transporter.sendMail({
+			from: `"Personal AI Assistant" <${mailId}>`,
+			to,
+			replyTo: SUPPORT_EMAIL,
+			subject: "We received your message",
+			text: `Hi ${name},\n\nThank you for reaching out to us. We have received your message and will get back to you as soon as possible.\n\nBest regards,\nPAT Team`,
+			html: `
+			<div style="font-family: Arial, sans-serif; line-height:1.6; color:#333;">
+			  <h2>Thank You for Contacting Us!</h2>
+			  <p>Hi ${name},</p>
+			  <p>We have received your message and appreciate you taking the time to reach out to us.</p>
+			  <p>Our team will review your inquiry and respond within 24-48 hours.</p>
+			  <br>
+			  <p>Best regards,</p>
 			  <p><strong>Personal AI Assistant Team </strong></p>
 			  <p><strong>Personal AI Assistant </strong></p>
-            </div>
-          `,
-        });
+			</div>
+		  `,
+		});
 
-        console.log(`✅ Contact confirmation email sent to ${to}. Message ID: ${info.messageId}`);
-    } catch (error) {
-        console.error(`❌ Error sending contact confirmation to ${to}:`, error.message);
-    }
+		console.log(`✅ Contact confirmation email sent to ${to}. Message ID: ${info.messageId}`);
+	} catch (error) {
+		console.error(`❌ Error sending contact confirmation to ${to}:`, error.message);
+	}
 };
 
-export { sendContactMail };
+export { sendOtpMail, sendResetMail, sendContactMail };
