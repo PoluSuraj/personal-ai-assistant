@@ -1,0 +1,12 @@
+Starting Debug (Gemini Pro)...
+URL from env: https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyBxnY5qxjmtAYAfYBMhRCCV8nIY7iMwE4Y
+Sending request...
+ERROR: Request failed with status code 404
+Status: 404
+Response Data: {
+  "error": {
+    "code": 404,
+    "message": "models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}

@@ -1,0 +1,13 @@
+Starting AI Debug...
+URL: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
+Key (first 5 chars): AIzaS...
+Sending request...
+ERROR: Request failed with status code 404
+Status: 404
+Response Data: {
+  "error": {
+    "code": 404,
+    "message": "models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.",
+    "status": "NOT_FOUND"
+  }
+}

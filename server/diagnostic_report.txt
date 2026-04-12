@@ -1,0 +1,13 @@
+[2026-02-12T14:50:08.766Z] Starting Diagnostic...
+[2026-02-12T14:50:08.774Z] Current Directory: C:\Users\hp\OneDrive\Desktop\UPDATED\UPDATED\server
+[2026-02-12T14:50:08.775Z] Script Directory: C:\Users\hp\OneDrive\Desktop\UPDATED\UPDATED\server
+[2026-02-12T14:50:08.777Z] .env file found.
+[2026-02-12T14:50:08.783Z] YOUTUBE_API_KEY: Present
+[2026-02-12T14:50:08.785Z] Key prefix: AIzaS...
+[2026-02-12T14:50:08.787Z] Checking Internet Connectivity (google.com)...
+[2026-02-12T14:50:09.550Z] Connectivity OK.
+[2026-02-12T14:50:09.553Z] Testing YouTube API...
+[2026-02-12T14:50:09.855Z] YouTube API Failed: Request failed with status code 403
+[2026-02-12T14:50:09.858Z] Status: 403
+[2026-02-12T14:50:09.860Z] Response: {"error":{"code":403,"message":"Requests from referer <empty> are blocked.","errors":[{"message":"Requests from referer <empty> are blocked.","domain":"global","reason":"forbidden"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_HTTP_REFERRER_BLOCKED","domain":"googleapis.com","metadata":{"httpReferrer":"<empty>","consumer":"projects/145048544604","service":"youtube.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Requests from referer <empty> are blocked."}]}}
+[2026-02-12T14:50:09.862Z] Diagnostic Complete.

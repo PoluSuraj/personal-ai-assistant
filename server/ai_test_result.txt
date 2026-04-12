@@ -1,0 +1,5 @@
+{
+  "success": true,
+  "status": 200,
+  "text": "Artificial Intelligence (AI) refers to the development of computer systems that can perform tasks that typically require human intelligence, such as learning, problem-solving, decision-making, and perception, by using algorithms and data to simulate intelligent behavior."
+}
