@@ -17,7 +17,9 @@ export const isAdminUser = (user) => {
 };
 
 export const verifyJWT = asyncHandler(async (req, res, next) => {
-    const token = req.cookies?.accessToken;
+    const authHeader = req.header("Authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+    const token = req.cookies?.accessToken || bearerToken;
     if (!token) {
         throw new ApiError(401, "Unauthorized Access");
     }

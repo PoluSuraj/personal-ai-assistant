@@ -16,7 +16,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login as authLogin } from "../store/authSlice.js";
 import { ArrowBackIcon } from "@chakra-ui/icons";
-import { API_BASE_URL } from "../utils/api";
+import { API_BASE_URL, setStoredAccessToken } from "../utils/api";
 
 export default function OtpVerification() {
 	const { email } = useParams();
@@ -103,7 +103,11 @@ export default function OtpVerification() {
 
 			const data = await response.json();
 			if (data.message === "Verified Success") {
-				dispatch(authLogin(data.data));
+				if (data.data?.accessToken) {
+					setStoredAccessToken(data.data.accessToken);
+				}
+				const { accessToken, refreshToken, ...userData } = data.data || {};
+				dispatch(authLogin(userData));
 				navigate("/");
 			} else {
 				setError("Incorrect OTP. Please check and try again.");

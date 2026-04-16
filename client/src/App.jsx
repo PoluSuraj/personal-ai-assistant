@@ -4,7 +4,7 @@ import { Outlet } from 'react-router-dom';
 import { login } from './store/authSlice';
 import { Flex, Spinner, Text, VStack } from '@chakra-ui/react';
 import ErrorBoundary from './components/ErrorBoundary';
-import { API_BASE_URL } from "./utils/api";
+import { apiFetch, clearStoredAccessToken } from "./utils/api";
 
 function App() {
   const dispatch = useDispatch();
@@ -12,16 +12,12 @@ function App() {
 
   const fetchCurrent = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/getCurrentUser`, {
+      const data = await apiFetch('/api/v1/users/getCurrentUser', {
         method: 'GET',
-        credentials: 'include',
       });
-
-      if (!res.ok) return;
-
-      const data = await res.json();
       dispatch(login(data.data));
     } catch (error) {
+      clearStoredAccessToken();
       console.error('Unable to fetch current user:', error);
     } finally {
       setIsLoading(false);

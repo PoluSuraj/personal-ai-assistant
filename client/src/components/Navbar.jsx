@@ -34,7 +34,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logout } from '../store/authSlice';
 import BackendStatus from './BackendStatus';
-import { API_BASE_URL } from "../utils/api";
+import { API_BASE_URL, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 import useNotificationCounts from '../hooks/useNotificationCounts';
 
 const navItems = [
@@ -63,12 +63,19 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/logout`, { method: 'POST', credentials: 'include' });
+      const storedToken = getStoredAccessToken();
+      const res = await fetch(`${API_BASE_URL}/api/v1/users/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+      });
       if (res.ok) {
+        clearStoredAccessToken();
         dispatch(logout());
         navigate('/authentication/login');
       }
     } catch (error) {
+      clearStoredAccessToken();
       console.error('Logout failed', error);
     }
   };

@@ -93,7 +93,7 @@ const registerUser = asyncHandler(async (req, res) => {
         .status(201)
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(201, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email" : "OTP generated. Email is not configured, use the shown OTP."));
+        .json(new ApiResponse(201, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken, devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email" : "OTP generated. Email is not configured, use the shown OTP."));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -176,7 +176,7 @@ const registerWithGoogle = asyncHandler(async (req, res) => {
         .status(201)
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(201, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser) }, "User creation Success"));
+        .json(new ApiResponse(201, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken }, "User creation Success"));
 
 
 })
@@ -200,7 +200,7 @@ const loginWithGoogle = asyncHandler(async (req, res) => {
         .status(200)
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(200, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser) }, "User Login Success"));
+        .json(new ApiResponse(200, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken }, "User Login Success"));
 
 
 })
@@ -355,7 +355,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
         .status(200)
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(200, { ...user.toObject(), isAdmin: isAdminUser(user) }, "Verified Success"));
+        .json(new ApiResponse(200, { ...user.toObject(), isAdmin: isAdminUser(user), accessToken, refreshToken }, "Verified Success"));
 
 
 })

@@ -27,7 +27,7 @@ import { FaChartPie, FaInbox, FaHome, FaSignOutAlt, FaBell, FaUsers } from "reac
 import { useDispatch, useSelector } from "react-redux";
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { logout } from "../store/authSlice";
-import { API_BASE_URL } from "../utils/api";
+import { API_BASE_URL, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 import BackendStatus from "./BackendStatus";
 import useNotificationCounts from "../hooks/useNotificationCounts";
 
@@ -83,10 +83,16 @@ export default function AdminLayout() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/v1/users/logout`, { method: "POST", credentials: "include" });
+      const storedToken = getStoredAccessToken();
+      await fetch(`${API_BASE_URL}/api/v1/users/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+      });
     } catch (error) {
       console.error("Admin logout failed", error);
     }
+    clearStoredAccessToken();
     dispatch(logout());
     navigate("/authentication/login");
   };

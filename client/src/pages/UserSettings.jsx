@@ -37,7 +37,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout, login } from "../store/authSlice.js";
 import { FaHistory, FaUserEdit, FaSignOutAlt, FaCog, FaBell, FaLock, FaBrain, FaFire, FaGraduationCap, FaChartLine } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../utils/api";
+import { API_BASE_URL, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 
 const skillTags = ["AI Chat", "Research", "Video Learning", "Quiz Practice", "Revision"];
 
@@ -79,12 +79,19 @@ function UserSettings() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/logout`, { method: "POST", credentials: "include" });
+      const storedToken = getStoredAccessToken();
+      const res = await fetch(`${API_BASE_URL}/api/v1/users/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+      });
       if (!res.ok) throw new Error("Getting problem while logging out");
+      clearStoredAccessToken();
       dispatch(logout());
       navigate('/authentication/login');
       toast({ title: "Logged out successfully.", status: "success", duration: 3000, isClosable: true });
     } catch (error) {
+      clearStoredAccessToken();
       toast({ title: "Logout failed.", description: error.message, status: "error", duration: 3000, isClosable: true });
     } finally {
       setIsLoggingOut(false);

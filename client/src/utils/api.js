@@ -1,5 +1,6 @@
 const runtimeOrigin = typeof window !== "undefined" ? window.location.origin : "";
 const runtimeHostname = typeof window !== "undefined" ? window.location.hostname : "";
+const ACCESS_TOKEN_STORAGE_KEY = "personal_ai_access_token";
 
 const getDefaultApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
@@ -25,16 +26,37 @@ export const API_BASE_URL = getDefaultApiBaseUrl();
 
 export const apiUrl = (path) => `${API_BASE_URL}${path}`;
 
+export const getStoredAccessToken = () => {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || "";
+};
+
+export const setStoredAccessToken = (token) => {
+  if (typeof window === "undefined") return;
+  if (!token) {
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+};
+
+export const clearStoredAccessToken = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+};
+
 export function isUnauthorizedError(error) {
   return error?.status === 401 || /unauthorized/i.test(String(error?.message || ""));
 }
 
 export async function apiFetch(path, options = {}) {
+  const accessToken = getStoredAccessToken();
   const response = await fetch(apiUrl(path), {
     credentials: "include",
     ...options,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -47,6 +69,9 @@ export async function apiFetch(path, options = {}) {
 
   if (!response.ok) {
     const message = data?.message || (response.status === 401 ? "Unauthorized access. Please sign in again." : "Request failed");
+    if (response.status === 401) {
+      clearStoredAccessToken();
+    }
     const error = new Error(message);
     error.status = response.status;
     error.data = data;
