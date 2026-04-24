@@ -37,12 +37,29 @@ const userSchema = new Schema(
             type: Boolean,
             default: false
         },
+        lastOtpVerifiedAt: {
+            type: Date,
+        },
         isAdmin: {
             type: Boolean,
             default: false,
         },
         refreshToken: {
             type: String,
+        },
+        preferences: {
+            emailNotifications: {
+                type: Boolean,
+                default: true,
+            },
+            twoFactorAuth: {
+                type: Boolean,
+                default: false,
+            },
+            adaptivePractice: {
+                type: Boolean,
+                default: true,
+            },
         },
     },
     { timestamps: true }

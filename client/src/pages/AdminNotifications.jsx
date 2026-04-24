@@ -9,6 +9,8 @@ import {
   FormLabel,
   Grid,
   Heading,
+  HStack,
+  IconButton,
   Input,
   Select,
   Spinner,
@@ -18,6 +20,7 @@ import {
   useToast,
   VStack,
 } from "@chakra-ui/react";
+import { FaTrash } from "react-icons/fa";
 import { apiFetch, isUnauthorizedError } from "../utils/api";
 
 const initialDirectForm = { recipientEmail: "", audience: "user", title: "", message: "" };
@@ -62,6 +65,7 @@ export default function AdminNotifications() {
       });
       setDirectForm(initialDirectForm);
       toast({ title: "Notification sent", status: "success" });
+      await load();
     } catch (error) {
       toast({ title: isUnauthorizedError(error) ? "Session expired" : "Send failed", description: isUnauthorizedError(error) ? "Please sign in again to continue." : error.message, status: "error" });
     } finally {
@@ -96,6 +100,16 @@ export default function AdminNotifications() {
       setNotifications((prev) => prev.map((item) => (item._id === id ? { ...item, status: "read", readAt: new Date().toISOString() } : item)));
     } catch (error) {
       toast({ title: "Could not update notification", description: error.message, status: "error" });
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    try {
+      await apiFetch(`/api/v1/notifications/${id}`, { method: "DELETE" });
+      setNotifications((prev) => prev.filter((item) => item._id !== id));
+      toast({ title: "Notification deleted", status: "success" });
+    } catch (error) {
+      toast({ title: "Delete failed", description: error.message, status: "error" });
     }
   };
 
@@ -200,9 +214,12 @@ export default function AdminNotifications() {
                       {notification.createdByEmail ? ` • sent by ${notification.createdByEmail}` : ""}
                     </Text>
                   </Box>
-                  {notification.status === "unread" ? (
-                    <Button colorScheme="teal" variant="outline" onClick={() => markRead(notification._id)}>Mark Read</Button>
-                  ) : null}
+                  <HStack>
+                    {notification.status === "unread" ? (
+                      <Button colorScheme="teal" variant="outline" onClick={() => markRead(notification._id)}>Mark Read</Button>
+                    ) : null}
+                    <IconButton colorScheme="red" variant="ghost" aria-label="Delete notification" icon={<FaTrash />} onClick={() => deleteNotification(notification._id)} />
+                  </HStack>
                 </Flex>
               </Box>
             ))}

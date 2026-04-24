@@ -8,10 +8,12 @@ import {
   Box,
   Button,
   Container,
+  Divider,
   Flex,
   Heading,
   HStack,
   Icon,
+  Image,
   Input,
   Modal,
   ModalBody,
@@ -38,6 +40,7 @@ import {
   FaClock,
   FaDownload,
   FaPlay,
+  FaQrcode,
   FaRedo,
   FaShieldAlt,
   FaTimesCircle,
@@ -72,7 +75,13 @@ function Quiz() {
   const optionDefaultBg = useColorModeValue("gray.50", "whiteAlpha.50");
   const optionHoverBg = useColorModeValue("gray.100", "whiteAlpha.100");
   const reviewBg = useColorModeValue("gray.50", "whiteAlpha.100");
-  const certificateBg = useColorModeValue("linear(to-br, white, teal.50)", "linear(to-br, gray.800, gray.900)");
+  const certificateBg = useColorModeValue("linear(to-br, #fff7ed, #ffffff 25%, #eff6ff 60%, #f5f3ff)", "linear(to-br, #1f2937, #111827 45%, #172554)");
+  const certificatePanel = useColorModeValue("rgba(255,255,255,0.92)", "rgba(15,23,42,0.74)");
+  const securityBannerBg = useColorModeValue("orange.50", "rgba(251, 191, 36, 0.18)");
+  const securityBannerText = useColorModeValue("orange.900", "orange.100");
+  const securityBannerBorder = useColorModeValue("orange.300", "orange.300");
+  const securityBadgeBg = useColorModeValue("orange.500", "orange.300");
+  const securityBadgeColor = useColorModeValue("white", "gray.900");
 
   const topics = useMemo(() => Array.from(new Set((savedTopics || []).filter(Boolean))), [savedTopics]);
   const filteredTopics = useMemo(() => {
@@ -85,8 +94,20 @@ function Quiz() {
   const percentage = questions.length ? Math.round((score / questions.length) * 100) : 0;
   const grade = percentage >= 90 ? "Distinction" : percentage >= 75 ? "Merit" : percentage >= 50 ? "Pass" : "Participation";
   const quizActive = questions.length > 0 && !submitted;
+  const issuedOn = new Date().toLocaleDateString();
+  const certificatePayload = `Certificate of Quiz Completion\nLearner: ${user?.name || "Learner"}\nTopic: ${topic}\nScore: ${score}/${questions.length}\nPercentage: ${percentage}%\nGrade: ${grade}\nIssued: ${issuedOn}`;
+  const qrValue = encodeURIComponent(certificatePayload);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrValue}`;
+  const certificateWatermark = "PAA";
 
-  const finalizeQuiz = (forcedReason = "") => {
+  const stopSecurityTimer = () => {
+    if (securityTimerRef.current) {
+      window.clearInterval(securityTimerRef.current);
+      securityTimerRef.current = null;
+    }
+  };
+
+  const finalizeQuiz = React.useCallback((forcedReason = "") => {
     const newScore = questions.reduce((total, q, index) => total + (answers[index] === q.correct ? 1 : 0), 0);
     setScore(newScore);
     setSubmitted(true);
@@ -95,20 +116,34 @@ function Quiz() {
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
     setSecurityCountdown(0);
+    stopSecurityTimer();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [answers, questions, topic]);
+
+  const resumeQuiz = () => {
+    setSecurityModalOpen(false);
+    setSecurityDeadline(null);
+    setSecurityCountdown(0);
+    stopSecurityTimer();
+    toast({
+      title: "Quiz resumed",
+      description: "You can continue the assessment. Please stay on this tab until you finish.",
+      status: "success",
+    });
   };
 
   useEffect(() => {
     if (!quizActive) return undefined;
 
     const triggerSecurityCountdown = () => {
+      if (securityDeadline) return;
       const deadline = Date.now() + 10000;
       setSecurityDeadline(deadline);
       setSecurityCountdown(10);
       setSecurityModalOpen(true);
       toast({
         title: "Tab switch detected",
-        description: "Return to the quiz now. It will auto-submit after the countdown.",
+        description: "Resume now or submit. If the countdown ends, the quiz will auto-submit.",
         status: "warning",
       });
     };
@@ -121,14 +156,11 @@ function Quiz() {
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [quizActive, toast]);
+  }, [quizActive, toast, securityDeadline]);
 
   useEffect(() => {
     if (!securityDeadline || submitted) {
-      if (securityTimerRef.current) {
-        window.clearInterval(securityTimerRef.current);
-        securityTimerRef.current = null;
-      }
+      stopSecurityTimer();
       return undefined;
     }
 
@@ -136,10 +168,7 @@ function Quiz() {
       const remaining = Math.max(0, Math.ceil((securityDeadline - Date.now()) / 1000));
       setSecurityCountdown(remaining);
       if (remaining <= 0) {
-        if (securityTimerRef.current) {
-          window.clearInterval(securityTimerRef.current);
-          securityTimerRef.current = null;
-        }
+        stopSecurityTimer();
         finalizeQuiz("Auto-submitted because the quiz window lost focus during the assessment.");
       }
     };
@@ -147,13 +176,8 @@ function Quiz() {
     syncCountdown();
     securityTimerRef.current = window.setInterval(syncCountdown, 250);
 
-    return () => {
-      if (securityTimerRef.current) {
-        window.clearInterval(securityTimerRef.current);
-        securityTimerRef.current = null;
-      }
-    };
-  }, [securityDeadline, submitted]);
+    return () => stopSecurityTimer();
+  }, [finalizeQuiz, securityDeadline, submitted]);
 
   const fetchAIQuestions = async () => {
     if (!topic.trim()) {
@@ -170,6 +194,7 @@ function Quiz() {
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
     setSecurityCountdown(0);
+    stopSecurityTimer();
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/chat/generateQuestions`, {
@@ -220,6 +245,7 @@ function Quiz() {
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
     setSecurityCountdown(0);
+    stopSecurityTimer();
   };
 
   const downloadFile = (filename, content, type = "text/plain;charset=utf-8") => {
@@ -240,12 +266,20 @@ function Quiz() {
           <meta charset="utf-8" />
           <title>Quiz Certificate</title>
           <style>
-            body { font-family: Arial, sans-serif; background: #f3f7fb; padding: 32px; }
-            .certificate { max-width: 900px; margin: 0 auto; background: white; border: 8px solid #6b46c1; padding: 48px; text-align: center; }
-            .title { font-size: 42px; font-weight: 800; color: #1a202c; }
-            .subtitle { font-size: 18px; color: #4a5568; margin-top: 8px; }
-            .name { font-size: 34px; margin: 24px 0; color: #2b6cb0; font-weight: 700; }
+            body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #fff7ed, #eef2ff); padding: 28px; }
+            .certificate { position: relative; max-width: 980px; margin: 0 auto; background: linear-gradient(135deg, #fffef7, #ffffff 32%, #eff6ff 68%, #f5f3ff); border: 14px solid #7c3aed; border-radius: 28px; padding: 52px; box-shadow: 0 24px 70px rgba(76, 29, 149, 0.18); overflow: hidden; }
+            .watermark { position: absolute; top: 34px; right: 38px; width: 110px; height: 110px; border-radius: 999px; border: 2px solid rgba(124, 58, 237, 0.18); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; letter-spacing: 0.18em; color: rgba(124, 58, 237, 0.22); text-transform: uppercase; pointer-events: none; background: rgba(255,255,255,0.72); }
+            .top-row { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+            .title { font-size: 44px; font-weight: 800; color: #1e1b4b; }
+            .subtitle { font-size: 18px; color: #6d28d9; margin-top: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+            .name { font-size: 36px; margin: 26px 0; color: #2b6cb0; font-weight: 700; }
             .meta { font-size: 18px; color: #2d3748; line-height: 1.8; }
+            .qr-card { text-align: center; background: #ffffff; border: 1px solid #dbeafe; border-radius: 18px; padding: 14px; min-width: 210px; }
+            .qr-label { margin-top: 10px; font-size: 13px; color: #475569; }
+            .score-strip { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+            .score-box { background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.1)); border: 1px solid rgba(99, 102, 241, 0.18); border-radius: 16px; padding: 18px; text-align: center; }
+            .score-label { font-size: 14px; color: #475569; margin-bottom: 6px; }
+            .score-value { font-size: 28px; font-weight: 800; color: #1e293b; }
             .signature-wrap { margin-top: 42px; display: flex; justify-content: flex-end; }
             .signature-block { min-width: 240px; text-align: center; }
             .signature-mark { font-family: Brush Script MT, cursive; font-size: 46px; line-height: 1; color: #4338ca; }
@@ -255,20 +289,32 @@ function Quiz() {
         </head>
         <body>
           <div class="certificate">
-            <div class="title">Certificate of Quiz Completion</div>
-            <div class="subtitle">Personal AI Assistant</div>
-            <p class="meta">This certificate is presented to</p>
-            <div class="name">${user?.name || "Learner"}</div>
-            <p class="meta">
+            <div class="watermark">${certificateWatermark}</div>
+            <div class="top-row">
+              <div>
+                <div class="title">Certificate of Quiz Completion</div>
+                <div class="subtitle">Personal AI Assistant</div>
+              </div>
+              <div class="qr-card">
+                <img src="${qrUrl}" width="180" height="180" alt="Certificate QR code" />
+                <div class="qr-label">Scan to view certificate details</div>
+              </div>
+            </div>
+            <p class="meta" style="margin-top: 26px; position: relative; z-index: 1;">This certificate is presented to</p>
+            <div class="name" style="position: relative; z-index: 1;">${user?.name || "Learner"}</div>
+            <p class="meta" style="position: relative; z-index: 1;">
               for completing the quiz on <strong>${topic}</strong><br />
-              with a score of <strong>${score}/${questions.length}</strong> (${percentage}%)<br />
-              Grade: <strong>${grade}</strong><br />
-              Issued on ${new Date().toLocaleDateString()}
+              Issued on ${issuedOn}
             </p>
-            <div class="signature-wrap">
+            <div class="score-strip" style="position: relative; z-index: 1;">
+              <div class="score-box"><div class="score-label">Score</div><div class="score-value">${score}/${questions.length}</div></div>
+              <div class="score-box"><div class="score-label">Percentage</div><div class="score-value">${percentage}%</div></div>
+              <div class="score-box"><div class="score-label">Grade</div><div class="score-value">${grade}</div></div>
+            </div>
+            <div class="signature-wrap" style="position: relative; z-index: 1;">
               <div class="signature-block">
-                <div class="signature-mark">Er. Suraj Kumar</div>
-                <div class="signature-name">Er. Suraj Kumar</div>
+                <div class="signature-mark">Er.Suraj Kumar</div>
+                <div class="signature-name">Er.Suraj Kumar</div>
                 <div class="signature-role">CEO & Director</div>
               </div>
             </div>
@@ -299,7 +345,7 @@ function Quiz() {
   return (
     <Container maxW="container.lg" py={8}>
       <VStack spacing={8} align="stretch">
-        <Flex direction={{ base: "column", md: "row" }} justifyContent="space-between" alignItems="center" bgGradient={headerBgGradient} p={8} borderRadius="2xl" boxShadow="xl" color="white" position="relative" overflow="hidden">
+        <Flex direction={{ base: "column", md: "row" }} justifyContent="space-between" alignItems="center" bgGradient={headerBgGradient} p={{ base: 6, md: 8 }} borderRadius="2xl" boxShadow="xl" color="white" position="relative" overflow="hidden">
           <Icon as={FaBrain} position="absolute" right="-20px" bottom="-30px" boxSize="150px" color="whiteAlpha.200" transform="rotate(15deg)" />
           <VStack align="start" spacing={2} zIndex={1}>
             <Heading size="xl" display="flex" alignItems="center"><Icon as={FaBrain} mr={3} />AI Knowledge Quiz</Heading>
@@ -312,7 +358,7 @@ function Quiz() {
 
         {!questions.length && !loading && (
           <ScaleFade initialScale={0.9} in>
-            <Box bg={cardBg} p={10} borderRadius="2xl" boxShadow="xl" textAlign="center" borderWidth="1px" borderColor={borderColor}>
+            <Box bg={cardBg} p={{ base: 6, md: 10 }} borderRadius="2xl" boxShadow="xl" textAlign="center" borderWidth="1px" borderColor={borderColor}>
               <VStack spacing={6}>
                 <Heading size="md" color={mutedHeadingColor}>Choose or Search Any Topic</Heading>
                 <Text color="gray.500" maxW="lg">
@@ -400,21 +446,39 @@ function Quiz() {
               )}
 
               {submitted && (
-                <Box bgGradient={certificateBg} p={8} borderRadius="2xl" borderWidth="1px" borderColor={borderColor} boxShadow="lg">
-                  <VStack spacing={4} textAlign="center">
+                <Box bgGradient={certificateBg} p={{ base: 6, md: 8 }} borderRadius="2xl" borderWidth="1px" borderColor={borderColor} boxShadow="lg" position="relative" overflow="hidden">
+                  <Box position="absolute" inset="0" display="flex" alignItems="center" justifyContent="center" pointerEvents="none" opacity={0.08}>
+                    <Text fontSize={{ base: "5xl", md: "7xl" }} fontWeight="black" letterSpacing="0.18em" textTransform="uppercase" color="purple.500">
+                      {certificateWatermark}
+                    </Text>
+                  </Box>
+                  <VStack spacing={6} textAlign="center" position="relative" zIndex={1}>
                     <Badge colorScheme="purple" px={4} py={1} borderRadius="full">Certificate Preview</Badge>
-                    <Heading size="lg">Certificate of Quiz Completion</Heading>
-                    <Text>This is awarded to <strong>{user?.name || "Learner"}</strong></Text>
-                    <Text>Topic: <strong>{topic}</strong></Text>
+                    <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} w="full" alignItems="start">
+                      <VStack spacing={4} align={{ base: "center", lg: "start" }} textAlign={{ base: "center", lg: "left" }}>
+                        <Heading size="lg">Certificate of Quiz Completion</Heading>
+                        <Text>This is awarded to <strong>{user?.name || "Learner"}</strong></Text>
+                        <Text>Topic: <strong>{topic}</strong></Text>
+                        <Text color="gray.500">Issued on {issuedOn}</Text>
+                      </VStack>
+                      <Box bg={certificatePanel} borderWidth="1px" borderColor={borderColor} borderRadius="2xl" p={4} justifySelf={{ base: "center", lg: "end" }}>
+                        <VStack spacing={3}>
+                          <HStack color="purple.500"><Icon as={FaQrcode} /><Text fontWeight="semibold">Certificate QR</Text></HStack>
+                          <Image src={qrUrl} alt="Certificate QR code" boxSize="160px" borderRadius="lg" />
+                          <Text fontSize="sm" color="gray.500">Scan to view certificate details</Text>
+                        </VStack>
+                      </Box>
+                    </SimpleGrid>
                     <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} w="full">
                       <Box bg={cardBg} borderRadius="xl" p={4}><Text fontSize="sm" color="gray.500">Score</Text><Heading size="md">{score}/{questions.length}</Heading></Box>
                       <Box bg={cardBg} borderRadius="xl" p={4}><Text fontSize="sm" color="gray.500">Percentage</Text><Heading size="md">{percentage}%</Heading></Box>
                       <Box bg={cardBg} borderRadius="xl" p={4}><Text fontSize="sm" color="gray.500">Grade</Text><Heading size="md">{grade}</Heading></Box>
                     </SimpleGrid>
-                    <Box w="full" pt={6}>
-                      <Flex justify="flex-end">
-                        <Box textAlign="center" minW="240px">
-                          <Text fontSize="4xl" fontFamily="cursive" color="purple.600" lineHeight="1">Er. Suraj Kumar</Text>
+                    <Divider />
+                    <Box w="full" pt={2}>
+                      <Flex justify={{ base: "center", md: "flex-end" }}>
+                        <Box textAlign="center" minW={{ base: "100%", md: "240px" }}>
+                          <Text fontSize={{ base: "3xl", md: "4xl" }} fontFamily="cursive" color="purple.600" lineHeight="1">Er. Suraj Kumar</Text>
                           <Box mt={2} borderTop="1px solid" borderColor={borderColor} pt={2}>
                             <Text fontWeight="semibold">Er. Suraj Kumar</Text>
                             <Text fontSize="sm" color="gray.500">CEO & Director</Text>
@@ -427,9 +491,9 @@ function Quiz() {
               )}
 
               {questions.map((q, index) => (
-                <Box key={`${q.question}-${index}`} bg={cardBg} p={8} borderRadius="2xl" boxShadow="lg" borderWidth="1px" borderColor={submitted ? (answers[index] === q.correct ? "green.400" : "red.400") : borderColor} position="relative" overflow="hidden">
+                <Box key={`${q.question}-${index}`} bg={cardBg} p={{ base: 6, md: 8 }} borderRadius="2xl" boxShadow="lg" borderWidth="1px" borderColor={submitted ? (answers[index] === q.correct ? "green.400" : "red.400") : borderColor} position="relative" overflow="hidden">
                   {submitted && <Box position="absolute" top={0} left={0} w="6px" h="full" bg={answers[index] === q.correct ? "green.400" : "red.400"} />}
-                  <Text fontSize="xl" fontWeight="bold" mb={6} color={questionColor}><Text as="span" color="teal.500" mr={2}>Q{index + 1}.</Text>{q.question}</Text>
+                  <Text fontSize={{ base: "lg", md: "xl" }} fontWeight="bold" mb={6} color={questionColor}><Text as="span" color="teal.500" mr={2}>Q{index + 1}.</Text>{q.question}</Text>
                   <VStack align="stretch" spacing={3}>
                     {Object.entries(q.options || {}).map(([key, option]) => {
                       const isSelected = answers[index] === key;
@@ -485,28 +549,29 @@ function Quiz() {
           </ModalHeader>
           <ModalBody>
             <VStack align="stretch" spacing={4}>
-              <Alert status="warning" borderRadius="xl">
-                <AlertIcon />
+              <Alert status="warning" borderRadius="xl" bg={securityBannerBg} color={securityBannerText} borderWidth="1px" borderColor={securityBannerBorder}>
+                <AlertIcon color={securityBannerText} />
                 <Box>
-                  <AlertTitle>Tab switching detected</AlertTitle>
-                  <AlertDescription>
-                    This quiz will auto-submit to your quiz panel if you leave the window during the active assessment.
+                  <AlertTitle color={securityBannerText}>Tab switching detected</AlertTitle>
+                  <AlertDescription color={securityBannerText}>
+                    Resume now or submit the quiz. If the countdown ends, the quiz will auto-submit.
                   </AlertDescription>
                 </Box>
               </Alert>
-              <Box bg="orange.50" borderRadius="xl" p={4}>
+              <Box bg={securityBannerBg} borderRadius="xl" p={4} borderWidth="1px" borderColor={securityBannerBorder}>
                 <HStack justify="space-between">
                   <HStack>
-                    <Icon as={FaClock} color="orange.500" />
-                    <Text fontWeight="semibold">Auto-submit countdown</Text>
+                    <Icon as={FaClock} color={securityBannerText} />
+                    <Text fontWeight="semibold" color={securityBannerText}>Auto-submit countdown</Text>
                   </HStack>
-                  <Badge colorScheme="orange" fontSize="md" px={3} py={1}>{securityCountdown}s</Badge>
+                  <Badge bg={securityBadgeBg} color={securityBadgeColor} fontSize="md" px={3} py={1}>{securityCountdown}s</Badge>
                 </HStack>
               </Box>
             </VStack>
           </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="orange" onClick={() => finalizeQuiz("Auto-submitted after tab switching during the quiz.")}>
+          <ModalFooter gap={3} flexWrap="wrap">
+            <Button variant="outline" onClick={resumeQuiz}>Resume Quiz</Button>
+            <Button colorScheme="orange" onClick={() => finalizeQuiz("Submitted after tab switching during the quiz.")}>
               Submit Now
             </Button>
           </ModalFooter>

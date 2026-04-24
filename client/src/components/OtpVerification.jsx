@@ -106,7 +106,7 @@ export default function OtpVerification() {
 				if (data.data?.accessToken) {
 					setStoredAccessToken(data.data.accessToken);
 				}
-				const { accessToken, refreshToken, ...userData } = data.data || {};
+				const { ...userData } = data.data || {};
 				dispatch(authLogin(userData));
 				navigate("/dashboard");
 			} else {
@@ -132,12 +132,13 @@ export default function OtpVerification() {
 	};
 
 	return (
-		<Flex w="100vw" minH="100dvh" overflowY={{ base: "auto", lg: "hidden" }} direction={{ base: "column", lg: "row" }}>
+		<Flex w="100vw" minH="100dvh" h={{ base: "auto", lg: "100dvh" }} overflowY={{ base: "auto", lg: "hidden" }} direction={{ base: "column", lg: "row" }} align="stretch">
 			{/* Left Side - Premium Image & Glass Overlay */}
 			<Box
 				display={{ base: "none", lg: "flex" }}
 				w="50%"
-				h="full"
+				minH="100dvh"
+				h="100%"
 				bgImage="url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1964&auto=format&fit=crop')"
 				bgSize="cover"
 				bgPos="center"
@@ -194,9 +195,11 @@ export default function OtpVerification() {
 			{/* Right Side - Clean Premium Form */}
 			<Flex
 				w={{ base: "100%", lg: "50%" }}
-				minH={{ base: "100dvh", lg: "100vh" }}
+				minH="100dvh"
 				align="center"
 				justify="center"
+				px={{ base: 4, md: 8 }}
+				py={{ base: 8, lg: 0 }}
 				bg={bgPage}
 				position="relative"
 			>

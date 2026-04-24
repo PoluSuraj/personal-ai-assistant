@@ -6,6 +6,7 @@ const router = new Router();
 
 router.route("/").get(verifyJWT, notificationController.listNotifications);
 router.route("/:id/read").patch(verifyJWT, notificationController.markNotificationRead);
+router.route("/:id").delete(verifyJWT, notificationController.deleteNotification);
 router.route("/send").post(verifyJWT, requireAdmin, notificationController.sendDirectNotification);
 router.route("/broadcast").post(verifyJWT, requireAdmin, notificationController.broadcastNotification);
 

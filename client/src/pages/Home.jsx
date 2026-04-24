@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { getHealth } from "../utils/api";
 
 
-const ServiceCommandCenter = ({ onStart }) => {
+const ServiceCommandCenter = ({ onStart, onVoiceStart }) => {
 	const [health, setHealth] = useState(null);
 	const [loading, setLoading] = useState(true);
 	const panelBg = useColorModeValue("white", "gray.800");
@@ -56,7 +56,7 @@ const ServiceCommandCenter = ({ onStart }) => {
 					))}
 				</SimpleGrid>
 			</Flex>
-			<Button mt={6} colorScheme="teal" onClick={onStart}>Start AI chat</Button>
+			<HStack mt={6} spacing={3} flexWrap="wrap"><Button colorScheme="teal" onClick={onStart}>Start AI chat</Button><Button variant="outline" colorScheme="purple" onClick={onVoiceStart}>Start voice assistant</Button></HStack>
 		</Box>
 	);
 };
@@ -269,7 +269,7 @@ function Home() {
 						</Text>
 					</VStack>
 
-					<ServiceCommandCenter onStart={() => navigate("/chat")} />
+					<ServiceCommandCenter onStart={() => navigate("/chat")} onVoiceStart={() => navigate("/voice-assistant")} />
 
 					{/* Cards Grid - Spread out professionally */}
 					<SimpleGrid
@@ -284,6 +284,13 @@ function Home() {
 							description="Instant answers and natural conversations."
 							color="brand"
 							onClick={() => navigate("/chat")}
+						/>
+						<FeatureCard
+							icon={FaUserCircle}
+							label="Voice Assistant"
+							description="Speak directly in your preferred language and let the assistant respond to your issue."
+							color="purple"
+							onClick={() => navigate("/voice-assistant")}
 						/>
 						<FeatureCard
 							icon={FaWikipediaW}

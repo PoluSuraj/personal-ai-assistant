@@ -16,7 +16,7 @@ const Layout = () => {
     }
 
     return (
-        <Flex minH="100dvh" flexDirection="row" overflow="hidden" position="relative" bg={bg}>
+        <Flex h="100dvh" flexDirection="row" overflow="hidden" position="relative" bg={bg}>
             <Box
                 position="absolute"
                 top="0"
@@ -45,26 +45,30 @@ const Layout = () => {
                 }}
                 pointerEvents="none"
             />
-            <Box display={{ base: 'none', md: 'block' }} zIndex={20}>
+            <Box display={{ base: 'none', md: 'block' }} zIndex={20} flexShrink={0}>
                 <Sidebar />
             </Box>
-            <Flex flexDirection="column" flex="1" overflow="hidden" position="relative" zIndex={1} bg="transparent" minW={0}>
+            <Flex flexDirection="column" flex="1" overflow="hidden" position="relative" zIndex={1} bg="transparent" minW={0} h="100dvh">
                 <Navbar />
                 <Box
                     flex="1"
+                    minH={0}
                     overflowY="auto"
                     overflowX="hidden"
                     position="relative"
+                    overscrollBehavior="contain"
                     css={{
-                        '&::-webkit-scrollbar': { width: '4px' },
+                        '&::-webkit-scrollbar': { width: '6px' },
                         '&::-webkit-scrollbar-track': { width: '6px' },
                         '&::-webkit-scrollbar-thumb': { background: scrollbarThumb, borderRadius: '24px' },
                     }}
                 >
-                    <Box minH="calc(100dvh - 60px - 60px)">
-                        <Outlet />
+                    <Box minH="calc(100dvh - 60px)" display="flex" flexDirection="column">
+                        <Box flex="1 0 auto">
+                            <Outlet />
+                        </Box>
+                        <Footer />
                     </Box>
-                    <Footer />
                 </Box>
             </Flex>
         </Flex>

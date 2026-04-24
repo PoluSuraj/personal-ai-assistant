@@ -14,6 +14,7 @@ import Features from './pages/Features.jsx'
 import About from './pages/About.jsx'
 import store from './store/store.js'
 import Chat from './pages/Chat.jsx'
+import VoiceAssistant from './pages/VoiceAssistant.jsx'
 import Quiz from './pages/Quiz.jsx'
 import Wikipedia from './pages/Wikipedia.jsx'
 import Youtube from './pages/Youtube.jsx'
@@ -58,6 +59,10 @@ const router = createBrowserRouter([
           {
             path: '/chat',
             element: <Chat />,
+          },
+          {
+            path: '/voice-assistant',
+            element: <VoiceAssistant />,
           },
           {
             path: '/youtube-recommendation',

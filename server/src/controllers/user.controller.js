@@ -11,6 +11,10 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { createDemoUser, ensureDemoUser, getDemoUserByEmail, isDemoMode, updateDemoUser, validateDemoLogin, verifyDemoOtp } from "../utils/demoStore.js";
 import { getAdminEmails, isAdminUser } from "../middlewares/auth.middleware.js";
 import { createNotification } from "./notification.controller.js";
+import { Contact } from "../models/contact.model.js";
+import { Notification } from "../models/notification.model.js";
+
+const OTP_SKIP_WINDOW_MS = 60 * 60 * 1000;
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -124,6 +128,23 @@ const loginUser = asyncHandler(async (req, res) => {
 
     if (!isPasswordValid) {
         throw new ApiError(403, "Invalid credentials");
+    }
+
+    const hasRecentOtpVerification = Boolean(
+        user.isEmailVerified
+        && user.lastOtpVerifiedAt
+        && (Date.now() - new Date(user.lastOtpVerifiedAt).getTime()) < OTP_SKIP_WINDOW_MS
+    );
+
+    if (hasRecentOtpVerification) {
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+        const finalUser = await User.findById(user._id).select('-password -refreshToken');
+
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, accessTokenOptions)
+            .cookie("refreshToken", refreshToken, refreshTokenOptions)
+            .json(new ApiResponse(200, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken, otpSkipped: true }, "Signed in successfully. OTP skipped because this device was verified recently."));
     }
 
     // Login step 1: password verified -> send OTP to email (do not issue tokens yet)
@@ -318,6 +339,29 @@ const updateAvatar = asyncHandler(async (req, res) => {
 })
 
 
+const removeAvatar = asyncHandler(async (req, res) => {
+    if (isDemoMode()) {
+        const user = updateDemoUser(req.user._id, { avatar: "" });
+        if (!user) throw new ApiError(404, "Demo user not found");
+        return res.status(200).json(new ApiResponse(200, user, "Profile photo removed"));
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $unset: { avatar: 1 },
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, { ...updatedUser.toObject(), isAdmin: isAdminUser(updatedUser) }, "Profile photo removed"));
+});
+
+
 const verifyOtp = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
     if (!email) {
@@ -343,11 +387,17 @@ const verifyOtp = asyncHandler(async (req, res) => {
     if (!(otp === emailExist.otp)) {
         throw new ApiError(401, "Wrong OTP");
     }
-    const user = await User.findOne({ email }).select('-password -refreshToken');
+    const user = await User.findOne({ email });
     await OtpSchema.findOneAndDelete({ email });
     if (!user) {
         throw new ApiError(404, "Something went wrong")
     }
+
+    user.isEmailVerified = true;
+    user.lastOtpVerifiedAt = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    const safeUser = await User.findById(user._id).select('-password -refreshToken');
 
     // After OTP verification, issue tokens/cookies (completes login)
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
@@ -355,7 +405,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
         .status(200)
         .cookie("accessToken", accessToken, accessTokenOptions)
         .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(200, { ...user.toObject(), isAdmin: isAdminUser(user), accessToken, refreshToken }, "Verified Success"));
+        .json(new ApiResponse(200, { ...safeUser.toObject(), isAdmin: isAdminUser(safeUser), accessToken, refreshToken }, "Verified Success"));
 
 
 })
@@ -433,14 +483,22 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-    const { name, email, username, bio } = req.body;
+    const { name, email, username, bio, preferences } = req.body;
 
     if (!name || !email) {
         throw new ApiError(400, "Name and Email are required");
     }
 
+    const normalizedUsername = typeof username === "string" ? username.trim().toLowerCase() : username;
+
     if (isDemoMode()) {
-        const user = updateDemoUser(req.user._id, { name, email, username, bio });
+        const user = updateDemoUser(req.user._id, {
+            name,
+            email,
+            username: normalizedUsername || "",
+            bio,
+            preferences,
+        });
         if (!user) throw new ApiError(404, "Demo user not found");
         return res.status(200).json(new ApiResponse(200, user, "Demo account details updated successfully"));
     }
@@ -451,18 +509,33 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         throw new ApiError(404, "User not found");
     }
 
-    // Update fields
-    user.name = name;
-    user.email = email;
+    if (normalizedUsername) {
+        const existingUsername = await User.findOne({ username: normalizedUsername, _id: { $ne: req.user._id } }).select("_id");
+        if (existingUsername) {
+            throw new ApiError(409, "Username is already taken");
+        }
+    }
 
-    if (username !== undefined) user.username = username;
+    user.name = name.trim();
+    user.email = email.trim().toLowerCase();
+    user.username = normalizedUsername || undefined;
     if (bio !== undefined) user.bio = bio;
+
+    if (preferences && typeof preferences === "object") {
+        user.preferences = {
+            emailNotifications: preferences.emailNotifications ?? user.preferences?.emailNotifications ?? true,
+            twoFactorAuth: preferences.twoFactorAuth ?? user.preferences?.twoFactorAuth ?? false,
+            adaptivePractice: preferences.adaptivePractice ?? user.preferences?.adaptivePractice ?? true,
+        };
+    }
 
     await user.save({ validateBeforeSave: false });
 
+    const safeUser = await User.findById(user._id).select("-password -refreshToken");
+
     return res
         .status(200)
-        .json(new ApiResponse(200, { ...user.toObject(), isAdmin: isAdminUser(user) }, "Account details updated successfully"));
+        .json(new ApiResponse(200, { ...safeUser.toObject(), isAdmin: isAdminUser(safeUser) }, "Account details updated successfully"));
 });
 
 const listAdmins = asyncHandler(async (req, res) => {
@@ -525,8 +598,37 @@ const listUsers = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, [{ email: req.user.email, name: req.user.name, isAdmin: true }], "Demo users loaded"));
     }
 
-    const users = await User.find().select("name email isAdmin createdAt").sort({ createdAt: -1 });
+    const users = await User.find().select("name email username bio avatar preferences isAdmin createdAt updatedAt").sort({ createdAt: -1 });
     return res.status(200).json(new ApiResponse(200, users, "Users loaded"));
+});
+
+const getManagedUserDetails = asyncHandler(async (req, res) => {
+    const email = decodeURIComponent(req.params.email || "").trim().toLowerCase();
+    if (!email) throw new ApiError(400, "User email is required");
+
+    const user = await User.findOne({ email }).select("-password -refreshToken");
+    if (!user) throw new ApiError(404, "User not found");
+
+    const [notifications, contacts] = await Promise.all([
+        Notification.find({ recipientEmail: email }).sort({ createdAt: -1 }).limit(12).lean(),
+        Contact.find({ email }).sort({ createdAt: -1 }).limit(12).lean(),
+    ]);
+
+    return res.status(200).json(new ApiResponse(200, {
+        user: { ...user.toObject(), isAdmin: isAdminUser(user) },
+        notifications,
+        contacts,
+        stats: {
+            notifications: notifications.length,
+            unreadNotifications: notifications.filter((item) => item.status !== "read").length,
+            contactMessages: contacts.length,
+            repliedContacts: contacts.filter((item) => item.status === "replied").length,
+        },
+        availability: {
+            chatHistory: false,
+            note: "Chat history is not persisted to the backend yet, so admins can only inspect stored account, contact, and notification data.",
+        },
+    }, "User details loaded"));
 });
 
 const createUserManually = asyncHandler(async (req, res) => {
@@ -590,6 +692,7 @@ export default {
     changeUserPassword,
     getCurrentUser,
     updateAvatar,
+    removeAvatar,
     verifyOtp,
     forgotPassword,
     resetPassword,
@@ -598,6 +701,7 @@ export default {
     grantAdminAccess,
     revokeAdminAccess,
     listUsers,
+    getManagedUserDetails,
     createUserManually,
     removeUserManually
 }

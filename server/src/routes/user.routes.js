@@ -11,6 +11,7 @@ router.route("/logout").post(verifyJWT, userController.logoutUser);
 router.route("/changePassword").post(verifyJWT, userController.changeUserPassword);
 router.route("/getCurrentUser").get(verifyJWT, userController.getCurrentUser);
 router.route("/updateAvatar").post(verifyJWT, upload.single("avatar"), userController.updateAvatar);
+router.route("/removeAvatar").delete(verifyJWT, userController.removeAvatar);
 router.route("/update-account").patch(verifyJWT, userController.updateAccountDetails);
 router.route('/registerWithGoogle').post(userController.registerWithGoogle);
 router.route('/loginWithGoogle').post(userController.loginWithGoogle);
@@ -21,6 +22,7 @@ router.route('/admins').get(verifyJWT, requireAdmin, userController.listAdmins);
 router.route('/admins/grant').patch(verifyJWT, requireAdmin, userController.grantAdminAccess);
 router.route('/admins/revoke').patch(verifyJWT, requireAdmin, userController.revokeAdminAccess);
 router.route('/manage-users').get(verifyJWT, requireAdmin, userController.listUsers);
+router.route('/manage-users/:email').get(verifyJWT, requireAdmin, userController.getManagedUserDetails);
 router.route('/manage-users').post(verifyJWT, requireAdmin, userController.createUserManually);
 router.route('/manage-users').delete(verifyJWT, requireAdmin, userController.removeUserManually);
 

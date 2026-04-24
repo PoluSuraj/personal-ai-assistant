@@ -7,6 +7,15 @@ import { getAdminEmails, isAdminUser } from "../middlewares/auth.middleware.js";
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
+const canAccessNotification = (notification, user) => {
+    const email = normalizeEmail(user?.email);
+    return (
+        notification.recipientEmail === email ||
+        (isAdminUser(user) && notification.audience === "admin") ||
+        (isAdminUser(user) && notification.audience === "broadcast")
+    );
+};
+
 export const createNotification = async ({
     title,
     message,
@@ -63,20 +72,22 @@ const listNotifications = asyncHandler(async (req, res) => {
 const markNotificationRead = asyncHandler(async (req, res) => {
     const notification = await Notification.findById(req.params.id);
     if (!notification) throw new ApiError(404, "Notification not found");
-
-    const email = normalizeEmail(req.user?.email);
-    const allowed =
-        notification.recipientEmail === email ||
-        (isAdminUser(req.user) && notification.audience === "admin") ||
-        (isAdminUser(req.user) && notification.audience === "broadcast");
-
-    if (!allowed) throw new ApiError(403, "Not allowed to update this notification");
+    if (!canAccessNotification(notification, req.user)) throw new ApiError(403, "Not allowed to update this notification");
 
     notification.status = "read";
     notification.readAt = new Date();
     await notification.save();
 
     return res.status(200).json(new ApiResponse(200, notification, "Notification marked as read"));
+});
+
+const deleteNotification = asyncHandler(async (req, res) => {
+    const notification = await Notification.findById(req.params.id);
+    if (!notification) throw new ApiError(404, "Notification not found");
+    if (!canAccessNotification(notification, req.user)) throw new ApiError(403, "Not allowed to delete this notification");
+
+    await Notification.deleteOne({ _id: notification._id });
+    return res.status(200).json(new ApiResponse(200, { _id: req.params.id }, "Notification deleted"));
 });
 
 const sendDirectNotification = asyncHandler(async (req, res) => {
@@ -132,6 +143,7 @@ const broadcastNotification = asyncHandler(async (req, res) => {
 export default {
     listNotifications,
     markNotificationRead,
+    deleteNotification,
     sendDirectNotification,
     broadcastNotification,
 };

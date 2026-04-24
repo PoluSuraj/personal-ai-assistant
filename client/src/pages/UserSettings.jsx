@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Flex,
   Box,
@@ -35,11 +35,16 @@ import {
 } from "@chakra-ui/react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, login } from "../store/authSlice.js";
-import { FaHistory, FaUserEdit, FaSignOutAlt, FaCog, FaBell, FaLock, FaBrain, FaFire, FaGraduationCap, FaChartLine } from "react-icons/fa";
+import { FaHistory, FaUserEdit, FaSignOutAlt, FaCog, FaBell, FaLock, FaBrain, FaFire, FaGraduationCap, FaChartLine, FaCamera } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
+import { API_BASE_URL, apiFetch, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 
 const skillTags = ["AI Chat", "Research", "Video Learning", "Quiz Practice", "Revision"];
+const defaultPreferences = {
+  emailNotifications: true,
+  twoFactorAuth: false,
+  adaptivePractice: true,
+};
 
 function UserSettings() {
   const user = useSelector((state) => state.authSlice.userData);
@@ -49,8 +54,11 @@ function UserSettings() {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ name: "", email: "", username: "", bio: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", username: "", bio: "", preferences: defaultPreferences });
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+  const fileInputRef = useRef(null);
 
   const bg = useColorModeValue("gray.50", "gray.950");
   const cardBg = useColorModeValue("white", "gray.800");
@@ -64,6 +72,9 @@ function UserSettings() {
   const historyHoverBg = useColorModeValue("teal.50", "whiteAlpha.200");
   const heroGradient = useColorModeValue("linear(to-br, teal.500, brand.600, accent.500)", "linear(to-br, teal.700, brand.800, accent.700)");
   const statBg = useColorModeValue("whiteAlpha.900", "blackAlpha.200");
+  const avatarButtonBg = useColorModeValue("white", "gray.800");
+  const avatarButtonColor = useColorModeValue("gray.800", "white");
+  const avatarButtonBorder = useColorModeValue("gray.200", "whiteAlpha.300");
 
   useEffect(() => {
     if (user) {
@@ -72,6 +83,10 @@ function UserSettings() {
         email: user.email || "",
         username: user.username || "",
         bio: user.bio || "",
+        preferences: {
+          ...defaultPreferences,
+          ...(user.preferences || {}),
+        },
       });
     }
   }, [user]);
@@ -100,26 +115,82 @@ function UserSettings() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePreferenceChange = (key) => {
+    setFormData((prev) => ({
+      ...prev,
+      preferences: {
+        ...prev.preferences,
+        [key]: !prev.preferences[key],
+      },
+    }));
+  };
+
+
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const avatarForm = new FormData();
+      avatarForm.append("avatar", file);
+      const storedToken = getStoredAccessToken();
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/updateAvatar`, {
+        method: "POST",
+        credentials: "include",
+        headers: storedToken ? { Authorization: `Bearer ${storedToken}` } : {},
+        body: avatarForm,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update profile photo");
+      }
+
+      dispatch(login(data.data));
+      toast({ title: "Profile photo updated", status: "success", duration: 2500, isClosable: true });
+    } catch (error) {
+      toast({ title: "Avatar upload failed", description: error.message, status: "error", duration: 3000, isClosable: true });
+    } finally {
+      event.target.value = "";
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setIsRemovingAvatar(true);
+    try {
+      const data = await apiFetch(`/api/v1/users/removeAvatar`, {
+        method: "DELETE",
+      });
+
+      dispatch(login(data.data));
+      toast({ title: "Profile photo removed", status: "success", duration: 2500, isClosable: true });
+    } catch (error) {
+      toast({ title: "Could not remove photo", description: error.message, status: "error", duration: 3000, isClosable: true });
+    } finally {
+      setIsRemovingAvatar(false);
+    }
   };
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/update-account`, {
+      const data = await apiFetch(`/api/v1/users/update-account`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          username: formData.username,
+          bio: formData.bio,
+          preferences: formData.preferences,
+        }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-
-      const data = await res.json();
-      dispatch(login({ userData: data.data }));
+      dispatch(login(data.data));
       toast({ title: "Profile updated", description: "Your changes have been saved successfully.", status: "success", duration: 3000, isClosable: true });
       setIsEditing(false);
     } catch (error) {
@@ -130,7 +201,16 @@ function UserSettings() {
   };
 
   const resetEdits = () => {
-    setFormData({ name: user?.name || "", email: user?.email || "", username: user?.username || "", bio: user?.bio || "" });
+    setFormData({
+      name: user?.name || "",
+      email: user?.email || "",
+      username: user?.username || "",
+      bio: user?.bio || "",
+      preferences: {
+        ...defaultPreferences,
+        ...(user?.preferences || {}),
+      },
+    });
     setIsEditing(false);
   };
 
@@ -162,6 +242,39 @@ function UserSettings() {
               <Box position="relative">
                 <Avatar size="2xl" name={formData.name} src={user?.avatar} borderWidth="5px" borderColor="whiteAlpha.800" boxShadow="2xl" />
                 <Badge position="absolute" bottom="4px" right="0" colorScheme="green" borderRadius="full" px={3} py={1}>Active</Badge>
+                <Button
+                  position="absolute"
+                  bottom="-3"
+                  left="50%"
+                  transform="translateX(-50%)"
+                  size="sm"
+                  leftIcon={<FaCamera />}
+                  bg={avatarButtonBg}
+                  color={avatarButtonColor}
+                  borderWidth="1px"
+                  borderColor={avatarButtonBorder}
+                  _hover={{ bg: avatarButtonBg, opacity: 0.92 }}
+                  onClick={() => fileInputRef.current?.click()}
+                  isLoading={isUploadingAvatar}
+                  loadingText="Uploading"
+                >
+                  Update photo
+                </Button>
+                {user?.avatar ? (
+                  <Button
+                    position="absolute"
+                    top="-3"
+                    right="-3"
+                    size="xs"
+                    colorScheme="red"
+                    borderRadius="full"
+                    onClick={handleRemoveAvatar}
+                    isLoading={isRemovingAvatar}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+                <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
               </Box>
               <VStack align={{ base: "center", lg: "start" }} textAlign={{ base: "center", lg: "left" }} spacing={3} flex={1}>
                 <Badge colorScheme="whiteAlpha" borderRadius="full" px={3}>Personal learning profile</Badge>
@@ -214,8 +327,8 @@ function UserSettings() {
                     <SimpleGrid columns={{ base: 1, md: 2 }} spacing={8}>
                       <VStack align="start" spacing={4}>
                         <FormControl><FormLabel>Full Name</FormLabel><Input name="name" value={formData.name} onChange={handleInputChange} isReadOnly={!isEditing} bg={fieldBg} borderColor={isEditing ? "teal.500" : "transparent"} /></FormControl>
-                        <FormControl><FormLabel>Email Address</FormLabel><Input name="email" value={formData.email} onChange={handleInputChange} isReadOnly={!isEditing} bg={fieldBg} borderColor={isEditing ? "teal.500" : "transparent"} /></FormControl>
-                        <FormControl><FormLabel>Username</FormLabel><Input name="username" value={formData.username} onChange={handleInputChange} isReadOnly={!isEditing} bg={fieldBg} borderColor={isEditing ? "teal.500" : "transparent"} /></FormControl>
+                        <FormControl><FormLabel>Email Address</FormLabel><Input name="email" value={formData.email} onChange={handleInputChange} isReadOnly bg={readOnlyBg} borderColor="transparent" /></FormControl>
+                        <FormControl><FormLabel>Username</FormLabel><Input name="username" value={formData.username} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="Choose a username" bg={fieldBg} borderColor={isEditing ? "teal.500" : "transparent"} /></FormControl>
                       </VStack>
                       <VStack align="start" spacing={4}>
                         <FormControl><FormLabel>Bio</FormLabel><Textarea name="bio" value={formData.bio} onChange={handleInputChange} isReadOnly={!isEditing} placeholder="Tell us a little about yourself..." minH="150px" bg={fieldBg} borderColor={isEditing ? "teal.500" : "transparent"} /></FormControl>
@@ -249,9 +362,12 @@ function UserSettings() {
                   </TabPanel>
                   <TabPanel>
                     <VStack spacing={6} align="stretch" maxW="lg">
-                      <Preference icon={FaBell} label="Email Notifications"><Switch colorScheme="teal" defaultChecked /></Preference>
-                      <Preference icon={FaLock} label="Two-Factor Authentication"><Switch colorScheme="teal" /></Preference>
-                      <Preference icon={FaCog} label="Adaptive Practice"><Switch colorScheme="teal" defaultChecked /></Preference>
+                      <Preference icon={FaBell} label="Email Notifications"><Switch colorScheme="teal" isChecked={formData.preferences.emailNotifications} onChange={() => handlePreferenceChange('emailNotifications')} /></Preference>
+                      <Preference icon={FaLock} label="Two-Factor Authentication"><Switch colorScheme="teal" isChecked={formData.preferences.twoFactorAuth} onChange={() => handlePreferenceChange('twoFactorAuth')} /></Preference>
+                      <Preference icon={FaCog} label="Adaptive Practice"><Switch colorScheme="teal" isChecked={formData.preferences.adaptivePractice} onChange={() => handlePreferenceChange('adaptivePractice')} /></Preference>
+                      <HStack justify="flex-end" pt={2}>
+                        <Button colorScheme="teal" onClick={handleSaveProfile} isLoading={isSaving}>Save Preferences</Button>
+                      </HStack>
                     </VStack>
                   </TabPanel>
                 </TabPanels>

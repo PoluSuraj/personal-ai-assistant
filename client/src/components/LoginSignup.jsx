@@ -16,12 +16,14 @@ import {
   Badge,
   Divider,
 } from "@chakra-ui/react";
-import { useSelector } from "react-redux";
-import { getHealth } from "../utils/api";
+import { useDispatch, useSelector } from "react-redux";
+import { getHealth, setStoredAccessToken } from "../utils/api";
 import { API_BASE_URL } from "../utils/api";
+import { login as authLogin } from "../store/authSlice.js";
 
 function LoginSignup() {
   const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const userdata = useSelector((state) => state.authSlice.userData);
   const { type } = useParams();
@@ -105,6 +107,13 @@ function LoginSignup() {
       const data = await response.json();
       if (!response.ok) {
         setErrors({ general: data.message || "Operation failed" });
+        return;
+      }
+
+      if (data.data?.accessToken) {
+        setStoredAccessToken(data.data.accessToken);
+        dispatch(authLogin(data.data));
+        navigate("/dashboard");
         return;
       }
 
@@ -227,7 +236,7 @@ function LoginSignup() {
             {isSignUp && (
               <FormControl isInvalid={errors.name}>
                 <FormLabel fontSize="sm" fontWeight="bold" color="gray.600">Full Name</FormLabel>
-                <Input name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} bg={inputBg} border="1px solid" borderColor={inputBorder} fontSize="md" h="50px" borderRadius="xl" _focus={{ borderColor: "brand.500", boxShadow: "0 0 0 1px var(--chakra-colors-brand-500)" }} _hover={{ borderColor: "gray.300" }} />
+                <Input name="name" placeholder="Suraj Kumar" value={formData.name} onChange={handleChange} bg={inputBg} border="1px solid" borderColor={inputBorder} fontSize="md" h="50px" borderRadius="xl" _focus={{ borderColor: "brand.500", boxShadow: "0 0 0 1px var(--chakra-colors-brand-500)" }} _hover={{ borderColor: "gray.300" }} />
                 <FormErrorMessage>{errors.name}</FormErrorMessage>
               </FormControl>
             )}
