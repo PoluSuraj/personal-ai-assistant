@@ -99,6 +99,12 @@ function Quiz() {
   const qrValue = encodeURIComponent(certificatePayload);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${qrValue}`;
   const certificateWatermark = "PAA";
+  const certificateSignatories = [
+    { role: "Teammate", name: "Er. Suraj Kumar" },
+    { role: "Teammate", name: "Er. Aaditya Jha" },
+    { role: "Teammate", name: "Er. Abhay Kr Yadav" },
+    { role: "Teammate", name: "Er. Harsha Vardhan Palli" },
+  ];
 
   const stopSecurityTimer = () => {
     if (securityTimerRef.current) {
@@ -267,24 +273,26 @@ function Quiz() {
           <title>Quiz Certificate</title>
           <style>
             body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #fff7ed, #eef2ff); padding: 28px; }
-            .certificate { position: relative; max-width: 980px; margin: 0 auto; background: linear-gradient(135deg, #fffef7, #ffffff 32%, #eff6ff 68%, #f5f3ff); border: 14px solid #7c3aed; border-radius: 28px; padding: 52px; box-shadow: 0 24px 70px rgba(76, 29, 149, 0.18); overflow: hidden; }
-            .watermark { position: absolute; top: 34px; right: 38px; width: 110px; height: 110px; border-radius: 999px; border: 2px solid rgba(124, 58, 237, 0.18); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; letter-spacing: 0.18em; color: rgba(124, 58, 237, 0.22); text-transform: uppercase; pointer-events: none; background: rgba(255,255,255,0.72); }
+            .certificate { position: relative; max-width: 900px; margin: 0 auto; background: linear-gradient(135deg, #fffef7, #ffffff 32%, #eff6ff 68%, #f5f3ff); border: 14px solid #7c3aed; border-radius: 28px; padding: 40px; box-shadow: 0 24px 70px rgba(76, 29, 149, 0.18); overflow: hidden; }
+            .watermark { position: absolute; top: 34px; right: 38px; width: 92px; height: 92px; border-radius: 999px; border: 2px solid rgba(124, 58, 237, 0.18); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; letter-spacing: 0.18em; color: rgba(124, 58, 237, 0.22); text-transform: uppercase; pointer-events: none; background: rgba(255,255,255,0.72); }
             .top-row { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-            .title { font-size: 44px; font-weight: 800; color: #1e1b4b; }
-            .subtitle { font-size: 18px; color: #6d28d9; margin-top: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-            .name { font-size: 36px; margin: 26px 0; color: #2b6cb0; font-weight: 700; }
+            .title { font-size: 38px; font-weight: 800; color: #1e1b4b; }
+            .subtitle { font-size: 16px; color: #6d28d9; margin-top: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+            .name { font-size: 32px; margin: 22px 0; color: #2b6cb0; font-weight: 700; }
             .meta { font-size: 18px; color: #2d3748; line-height: 1.8; }
             .qr-card { text-align: center; background: #ffffff; border: 1px solid #dbeafe; border-radius: 18px; padding: 14px; min-width: 210px; }
             .qr-label { margin-top: 10px; font-size: 13px; color: #475569; }
-            .score-strip { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-            .score-box { background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.1)); border: 1px solid rgba(99, 102, 241, 0.18); border-radius: 16px; padding: 18px; text-align: center; }
+            .score-strip { margin-top: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+            .score-box { background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.1)); border: 1px solid rgba(99, 102, 241, 0.18); border-radius: 16px; padding: 14px; text-align: center; }
             .score-label { font-size: 14px; color: #475569; margin-bottom: 6px; }
-            .score-value { font-size: 28px; font-weight: 800; color: #1e293b; }
-            .signature-wrap { margin-top: 42px; display: flex; justify-content: flex-end; }
-            .signature-block { min-width: 240px; text-align: center; }
-            .signature-mark { font-family: Brush Script MT, cursive; font-size: 46px; line-height: 1; color: #4338ca; }
-            .signature-name { margin-top: 10px; padding-top: 10px; border-top: 1px solid #94a3b8; font-size: 16px; color: #0f172a; font-weight: 700; }
-            .signature-role { font-size: 14px; color: #64748b; }
+            .score-value { font-size: 22px; font-weight: 800; color: #1e293b; }
+            .signature-wrap { margin-top: 28px; background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(124, 58, 237, 0.16); border-radius: 20px; padding: 18px; }
+            .signature-title { text-align: center; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: #6d28d9; font-weight: 800; margin-bottom: 12px; }
+            .signature-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+            .signature-block { min-height: 112px; text-align: center; background: rgba(255,255,255,0.82); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 18px; padding: 12px 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5); }
+            .signature-mark { font-family: Brush Script MT, cursive; font-size: 24px; line-height: 1; color: #4338ca; min-height: 32px; display: flex; align-items: center; justify-content: center; }
+            .signature-name { margin-top: 10px; padding-top: 10px; border-top: 1px solid #cbd5e1; font-size: 13px; color: #0f172a; font-weight: 700; }
+            .signature-role { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
           </style>
         </head>
         <body>
@@ -312,10 +320,15 @@ function Quiz() {
               <div class="score-box"><div class="score-label">Grade</div><div class="score-value">${grade}</div></div>
             </div>
             <div class="signature-wrap" style="position: relative; z-index: 1;">
-              <div class="signature-block">
-                <div class="signature-mark">Er.Suraj Kumar</div>
-                <div class="signature-name">Er.Suraj Kumar</div>
-                <div class="signature-role">CEO & Director</div>
+              <div class="signature-title">Project Team Signatories</div>
+              <div class="signature-grid">
+                ${certificateSignatories.map((member) => `
+                  <div class="signature-block">
+                    <div class="signature-mark">${member.name}</div>
+                    <div class="signature-name">${member.name}</div>
+                    <div class="signature-role">${member.role}</div>
+                  </div>
+                `).join("")}
               </div>
             </div>
           </div>
@@ -476,15 +489,20 @@ function Quiz() {
                     </SimpleGrid>
                     <Divider />
                     <Box w="full" pt={2}>
-                      <Flex justify={{ base: "center", md: "flex-end" }}>
-                        <Box textAlign="center" minW={{ base: "100%", md: "240px" }}>
-                          <Text fontSize={{ base: "3xl", md: "4xl" }} fontFamily="cursive" color="purple.600" lineHeight="1">Er. Suraj Kumar</Text>
-                          <Box mt={2} borderTop="1px solid" borderColor={borderColor} pt={2}>
-                            <Text fontWeight="semibold">Er. Suraj Kumar</Text>
-                            <Text fontSize="sm" color="gray.500">CEO & Director</Text>
-                          </Box>
-                        </Box>
-                      </Flex>
+                      <VStack spacing={4} align="stretch">
+                        <Badge alignSelf="center" colorScheme="purple" px={4} py={1} borderRadius="full">Project Team Signatories</Badge>
+                        <SimpleGrid columns={{ base: 2, lg: 4 }} spacing={3} w="full">
+                          {certificateSignatories.map((member) => (
+                            <Box key={member.role} bg={certificatePanel} borderWidth="1px" borderColor={borderColor} borderRadius="2xl" p={3} textAlign="center" boxShadow="sm">
+                              <Text fontSize={{ base: "lg", md: "xl" }} fontFamily="cursive" color="purple.600" lineHeight="1.1">{member.name}</Text>
+                              <Box mt={2} borderTop="1px solid" borderColor={borderColor} pt={2}>
+                                <Text fontWeight="semibold">{member.name}</Text>
+                                <Text fontSize="sm" color="gray.500">{member.role}</Text>
+                              </Box>
+                            </Box>
+                          ))}
+                        </SimpleGrid>
+                      </VStack>
                     </Box>
                   </VStack>
                 </Box>
