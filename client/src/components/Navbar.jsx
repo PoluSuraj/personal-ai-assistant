@@ -38,7 +38,7 @@ import { API_BASE_URL, clearStoredAccessToken, getStoredAccessToken } from "../u
 import useNotificationCounts from '../hooks/useNotificationCounts';
 
 const navItems = [
-  { label: 'Home', to: '/', icon: FaHome },
+  { label: 'Home', to: '/dashboard', icon: FaHome },
   { label: 'Features', to: '/features', icon: FaStar },
   { label: 'About', to: '/about', icon: FaInfoCircle },
   { label: 'Contact', to: '/contact-us', icon: FaEnvelope },
@@ -113,7 +113,7 @@ export default function Navbar() {
         </Flex>
 
         <Flex flex={{ base: 1 }} justify={{ base: 'start', md: 'start' }} alignItems="center">
-          <Link onClick={() => navigate('/')} _hover={{ textDecoration: 'none', opacity: 0.8 }} cursor="pointer">
+          <Link onClick={() => navigate('/dashboard')} _hover={{ textDecoration: 'none', opacity: 0.8 }} cursor="pointer">
             <Flex alignItems="center">
               <Box as="img" src="/logo.svg" alt="AI Assistant Logo" h="40px" mr={3} objectFit="contain" />
               <Text textAlign={useBreakpointValue({ base: 'center', md: 'left' })} fontFamily="heading" fontWeight="bold" fontSize="xl" bgGradient="linear(to-r, brand.400, accent.500)" bgClip="text" display={{ base: 'none', md: 'block' }}>

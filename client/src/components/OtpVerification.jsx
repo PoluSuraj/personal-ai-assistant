@@ -108,7 +108,7 @@ export default function OtpVerification() {
 				}
 				const { accessToken, refreshToken, ...userData } = data.data || {};
 				dispatch(authLogin(userData));
-				navigate("/");
+				navigate("/dashboard");
 			} else {
 				setError("Incorrect OTP. Please check and try again.");
 			}

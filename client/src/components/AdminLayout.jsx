@@ -36,7 +36,7 @@ const adminLinks = [
   { label: "Inbox", to: "/admin/inbox", icon: FaInbox, countKey: "inboxUnread" },
   { label: "Notifications", to: "/admin/notifications", icon: FaBell, countKey: "adminUnread" },
   { label: "Users", to: "/admin/users", icon: FaUsers, countKey: null },
-  { label: "User App", to: "/", icon: FaHome, countKey: null },
+  { label: "User App", to: "/dashboard", icon: FaHome, countKey: null },
 ];
 
 function AdminNavItem({ label, to, icon, badgeCount = 0, onNavigate }) {
@@ -79,7 +79,7 @@ export default function AdminLayout() {
   const borderColor = useColorModeValue("gray.200", "whiteAlpha.200");
 
   if (!user) return <Navigate to="/authentication/login" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const handleLogout = async () => {
     try {

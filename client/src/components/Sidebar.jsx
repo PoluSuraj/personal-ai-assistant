@@ -98,7 +98,7 @@ const Sidebar = () => {
           </Box>
         </NavLink>
         <VStack spacing={4} w="full" px={3} flex={1} justify="flex-start" pt={8} overflowY="auto" css={{ '&::-webkit-scrollbar': { display: 'none' } }}>
-          <SidebarIcon icon={FaHome} to="/" label="Dashboard" />
+          <SidebarIcon icon={FaHome} to="/dashboard" label="Dashboard" />
           <SidebarIcon icon={FaComments} to="/chat" label="Chat" />
           <SidebarIcon icon={FaYoutube} to="/youtube-recommendation" label="Videos" />
           <SidebarIcon icon={FaWikipediaW} to="/wikipedia-search" label="Wiki" />

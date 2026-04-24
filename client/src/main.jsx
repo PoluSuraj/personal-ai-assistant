@@ -9,6 +9,7 @@ import Layout from './components/Layout.jsx'
 import AdminLayout from './components/AdminLayout.jsx'
 
 import Home from './pages/Home.jsx'
+import Welcome from './pages/Welcome.jsx'
 import Features from './pages/Features.jsx'
 import About from './pages/About.jsx'
 import store from './store/store.js'
@@ -21,7 +22,6 @@ import ForgotPassword from './components/ForgotPassword.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
 import ContactUs from './pages/ContactUs.jsx'
 import Terms from './pages/Terms.jsx'
-import Dashboard from './pages/Home.jsx'
 import UserSettings from './pages/UserSettings.jsx'
 import AdminInbox from './pages/AdminInbox.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
@@ -31,33 +31,33 @@ import AdminUsers from './pages/AdminUsers.jsx'
 import OtpVerification from './components/OtpVerification.jsx'
 import theme from './theme.js'
 
-
-
-
 const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
     children: [
       {
-        // Authenticated Layout Routes
+        path: '/',
+        element: <Welcome />,
+      },
+      {
         element: <Layout />,
         children: [
           {
-            path: '/',
-            element: <Home />
+            path: '/dashboard',
+            element: <Home />,
           },
           {
             path: '/features',
-            element: <Features />
+            element: <Features />,
           },
           {
             path: '/about',
-            element: <About />
+            element: <About />,
           },
           {
             path: '/chat',
-            element: <Chat />
+            element: <Chat />,
           },
           {
             path: '/youtube-recommendation',
@@ -65,10 +65,11 @@ const router = createBrowserRouter([
           },
           {
             path: '/wikipedia-search',
-            element: <Wikipedia />
-          }, {
-            path: "/quiz",
-            element: <Quiz />
+            element: <Wikipedia />,
+          },
+          {
+            path: '/quiz',
+            element: <Quiz />,
           },
           {
             path: '/userSettings',
@@ -77,8 +78,8 @@ const router = createBrowserRouter([
           {
             path: '/notifications',
             element: <Notifications />,
-          }
-        ]
+          },
+        ],
       },
       {
         path: '/admin',
@@ -99,38 +100,36 @@ const router = createBrowserRouter([
           {
             path: '/admin/users',
             element: <AdminUsers />,
-          }
-        ]
+          },
+        ],
       },
       {
-        // Public / Full Screen Routes (No Sidebar/Navbar)
-        path: "/authentication/:type",
-        element: <LoginSignup />
+        path: '/authentication/:type',
+        element: <LoginSignup />,
       },
       {
-        path: "/forgot-password",
-        element: <ForgotPassword />
+        path: '/forgot-password',
+        element: <ForgotPassword />,
       },
       {
-        path: "/reset-password",
-        element: <ResetPassword />
+        path: '/reset-password',
+        element: <ResetPassword />,
       },
       {
-        path: "/contact-us",
-        element: <ContactUs />
+        path: '/contact-us',
+        element: <ContactUs />,
       },
       {
-        path: "/terms",
-        element: <Terms />
+        path: '/terms',
+        element: <Terms />,
       },
       {
-        path: "/otpVerification/:email",
-        element: <OtpVerification />
+        path: '/otpVerification/:email',
+        element: <OtpVerification />,
       },
-    ]
-  }
+    ],
+  },
 ])
-
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

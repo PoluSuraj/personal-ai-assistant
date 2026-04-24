@@ -36,7 +36,7 @@ function LoginSignup() {
 
   useEffect(() => {
     if (userdata) {
-      navigate("/");
+      navigate("/dashboard");
     }
   }, [userdata, navigate]);
 
@@ -151,12 +151,14 @@ function LoginSignup() {
             boxShadow="2xl"
           >
             <Heading fontSize={{ base: "3xl", md: "5xl" }} fontWeight="800" lineHeight="1.1" mb={4}>
-              {isSignUp ? "Join the Future." : "Welcome Back."}
+              {/* {isSignUp ? "Join the Future." : "Welcome To " + "\n" + "AI - Driven Smart Personalized Learning Assistant."} */}
+              {isSignUp ? "Join the Future." : "Welcome"}
             </Heading>
             <Text fontSize={{ base: "md", md: "lg" }} color="whiteAlpha.800" fontWeight="medium">
               {isSignUp
                 ? "Create your account and start your professional journey with AI-powered training."
-                : "Sign in to access your personalized dashboard and continue your progress."}
+                // : "Sign in to access your personalized dashboard and continue your progress."}
+                : "Sign in to access your AI - Driven Smart Personalized Learning Assistant."}
             </Text>
           </Box>
         </VStack>

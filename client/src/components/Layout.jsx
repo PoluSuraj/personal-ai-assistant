@@ -12,7 +12,7 @@ const Layout = () => {
     const scrollbarThumb = useColorModeValue('gray.300', 'gray.600');
 
     if (!user) {
-        return <Navigate to="/authentication/login" replace />;
+        return <Navigate to="/" replace />;
     }
 
     return (

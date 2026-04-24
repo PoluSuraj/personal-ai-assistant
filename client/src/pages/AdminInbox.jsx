@@ -65,7 +65,7 @@ export default function AdminInbox() {
   }, [isAdmin, toast]);
 
   if (!user) return <Navigate to="/authentication/login" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const updateStatus = async (status) => {
     if (!selectedMessage) return;
