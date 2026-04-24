@@ -86,6 +86,8 @@ const Sidebar = () => {
   const { userUnread } = useNotificationCounts(userData);
   const bg = useColorModeValue("#ffffff", "#111111");
   const sidebarBorder = useColorModeValue("gray.200", "whiteAlpha.100");
+  const avatarBg = useColorModeValue("brand.500", "brand.400");
+  const avatarColor = useColorModeValue("white", "gray.900");
   const settingsColor = useColorModeValue("gray.500", "gray.400");
   const settingsBg = useColorModeValue("gray.50", "whiteAlpha.100");
   const scrollbarThumb = useColorModeValue("gray.300", "whiteAlpha.300");
@@ -122,7 +124,7 @@ const Sidebar = () => {
             transition="all 0.3s"
             _hover={{ transform: "scale(1.05)", borderColor: "accent.400" }}
           >
-            <Avatar name={userData?.name} size={collapsed ? "md" : "lg"} src={userData?.avatar} cursor="pointer" />
+            <Avatar name={userData?.name} size={collapsed ? "md" : "lg"} src={userData?.avatar} bg={avatarBg} color={avatarColor} cursor="pointer" />
           </Box>
         </NavLink>
 
