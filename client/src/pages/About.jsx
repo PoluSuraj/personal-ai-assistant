@@ -46,8 +46,8 @@ export default function About() {
   const teamMembers = [
     { name: 'Aaditya Jha', role: 'Full Stack Developer', email: '22a91a0562@gmail.com', github: 'https://github.com/imaadityajha', linkedin: 'https://www.linkedin.com/in/imaadityajha/', twitter: 'https://twitter.com/imaadityajha', photo: '/me_pp.jpg' },
     { name: 'Abhay Kumar Yadav', role: 'Frontend Developer', email: 'abhay.yadav97719@gmail.com', github: 'https://github.com/Abhay-Kumar-Yadav', linkedin: 'https://www.linkedin.com/in/abhay-kumar-yadav-730806278/', twitter: 'https://x.com/I_am_Aman_yadav', photo: '/501.jpeg' },
-    { name: 'Palli Harshavardhan', role: 'Backend Developer', email: 'harshavardhanpalli276@gmail.com', github: 'https://github.com/harshaidiot', linkedin: 'https://www.linkedin.com/in/harsha-vardhan-palli-609549282', twitter: 'https://twitter.com', photo: '/542.jpeg' },
-    { name: 'Suraj Kumar', role: 'UI/UX Designer', email: '21a91a0547@gmail.com', github: 'https://github.com/PoluSuraj', linkedin: 'https://linktr.ee/fordailyuse36polusuraj', twitter: 'https://x.com/surajgu92925391?s=21', photo: '/547.jpg', website: 'https://polusuraj.github.io/portfolio/' },
+    { name: 'Palli Harshavardhan', role: 'QA Engineer', email: 'harshavardhanpalli276@gmail.com', github: 'https://github.com/harshaidiot', linkedin: 'https://www.linkedin.com/in/harsha-vardhan-palli-609549282', twitter: 'https://twitter.com', photo: '/542.jpeg' },
+    { name: 'Suraj Kumar', role: 'Systems Architect Engineer', email: '21a91a0547@gmail.com', github: 'https://github.com/PoluSuraj', linkedin: 'https://linktr.ee/fordailyuse36polusuraj', twitter: 'https://x.com/surajgu92925391?s=21', photo: '/547.jpg', website: 'https://polusuraj.github.io/portfolio/' },
   ];
   const projectGuide = { name: 'DR. K NAGARAJU', role: 'Project Guide & Mentor', email: 'nagarajuk@adityauniversity.in', photo: '/guide.jpg' };
 
