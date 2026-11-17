@@ -57,21 +57,27 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/v1/health", (req, res) => {
+    const demoMode = process.env.DEMO_MODE === "true";
+    const configuredAiModel = process.env.AI_MODEL || "llama-3.3-70b-versatile";
+    const aiModel = configuredAiModel === "llama-3.3-70b-versatile"
+        ? "openai/gpt-oss-120b"
+        : configuredAiModel;
+
     res.json({
         success: true,
-        status: "ok",
-        mode: process.env.DEMO_MODE === "true" ? "demo" : "database",
+        status: demoMode ? "degraded" : "ok",
+        mode: demoMode ? "demo" : "database",
         cors: allowAllOrigins ? "allow-all" : allowedOrigins,
         services: {
-            database: process.env.DEMO_MODE === "true" ? "demo-memory" : "mongodb",
+            database: demoMode ? "demo-memory" : "mongodb",
             ai: process.env.GROQ_API_KEY && process.env.AI_API_URL ? "configured" : "fallback",
-            aiModel: process.env.AI_MODEL || "llama-3.3-70b-versatile",
+            aiModel,
             youtube: process.env.YOUTUBE_API_KEY ? "configured" : "fallback",
             email: process.env.MAIL_ID && process.env.MAIL_PASSWORD ? "configured" : "fallback",
             cloudinary: process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET ? "configured" : "missing",
             auth: process.env.ACCESS_TOKEN_SECRET && process.env.REFRESH_TOKEN_SECRET ? "configured" : "fallback",
         },
-        demo: process.env.DEMO_MODE === "true"
+        demo: demoMode && process.env.NODE_ENV !== "production"
             ? {
                   email: "demo@local.test",
                   password: "Password@123",
