@@ -1,10 +1,15 @@
 const runtimeOrigin = typeof window !== "undefined" ? window.location.origin : "";
 const runtimeHostname = typeof window !== "undefined" ? window.location.hostname : "";
 const ACCESS_TOKEN_STORAGE_KEY = "personal_ai_access_token";
+const PRODUCTION_API_BASE_URL = "https://personal-ai-assistant-api-4atn.onrender.com";
 
 const getDefaultApiBaseUrl = () => {
+  if (import.meta.env.PROD) {
+    return PRODUCTION_API_BASE_URL;
+  }
+
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "");
   }
 
   if (runtimeHostname === "localhost") {

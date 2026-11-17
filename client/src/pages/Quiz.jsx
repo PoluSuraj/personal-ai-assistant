@@ -47,7 +47,7 @@ import {
   FaTrophy,
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
-import { API_BASE_URL } from "../utils/api";
+import { API_BASE_URL, apiFetch } from "../utils/api";
 
 function Quiz() {
   const [topic, setTopic] = useState("");
@@ -65,6 +65,8 @@ function Quiz() {
   const savedTopics = useSelector((state) => state.chatTopic.topics);
   const user = useSelector((state) => state.authSlice.userData);
   const securityTimerRef = useRef(null);
+  const securityDeadlineRef = useRef(null);
+  const leftQuizTabRef = useRef(false);
 
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -121,6 +123,7 @@ function Quiz() {
     setSavedScores((prev) => [{ topic, score: newScore, total: questions.length }, ...prev].slice(0, 5));
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
+    securityDeadlineRef.current = null;
     setSecurityCountdown(0);
     stopSecurityTimer();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -129,6 +132,7 @@ function Quiz() {
   const resumeQuiz = () => {
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
+    securityDeadlineRef.current = null;
     setSecurityCountdown(0);
     stopSecurityTimer();
     toast({
@@ -142,8 +146,9 @@ function Quiz() {
     if (!quizActive) return undefined;
 
     const triggerSecurityCountdown = () => {
-      if (securityDeadline) return;
+      if (securityDeadlineRef.current) return;
       const deadline = Date.now() + 10000;
+      securityDeadlineRef.current = deadline;
       setSecurityDeadline(deadline);
       setSecurityCountdown(10);
       setSecurityModalOpen(true);
@@ -156,13 +161,16 @@ function Quiz() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
+        leftQuizTabRef.current = true;
+      } else if (leftQuizTabRef.current) {
+        leftQuizTabRef.current = false;
         triggerSecurityCountdown();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [quizActive, toast, securityDeadline]);
+  }, [quizActive, toast]);
 
   useEffect(() => {
     if (!securityDeadline || submitted) {
@@ -175,6 +183,7 @@ function Quiz() {
       setSecurityCountdown(remaining);
       if (remaining <= 0) {
         stopSecurityTimer();
+        securityDeadlineRef.current = null;
         finalizeQuiz("Auto-submitted because the quiz window lost focus during the assessment.");
       }
     };
@@ -199,20 +208,15 @@ function Quiz() {
     setAutoSubmitReason("");
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
+    securityDeadlineRef.current = null;
     setSecurityCountdown(0);
     stopSecurityTimer();
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/chat/generateQuestions`, {
+      const data = await apiFetch("/api/v1/chat/generateQuestions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topics: [topic.trim()] }),
-        credentials: "include",
       });
-
-      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-      const data = await response.json();
       const generatedQuestions = data.topics?.[0]?.questions;
       if (Array.isArray(generatedQuestions) && generatedQuestions.length > 0) {
         setQuestions(generatedQuestions);
@@ -250,6 +254,8 @@ function Quiz() {
     setAutoSubmitReason("");
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
+    securityDeadlineRef.current = null;
+    leftQuizTabRef.current = false;
     setSecurityCountdown(0);
     stopSecurityTimer();
   };

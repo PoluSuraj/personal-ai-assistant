@@ -12,6 +12,13 @@ dotenv.config({
 
 const API_URL = process.env.AI_API_URL;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const getAIModel = () => {
+	const configuredModel = String(process.env.AI_MODEL || "").trim();
+	if (!configuredModel || configuredModel === "llama-3.3-70b-versatile") {
+		return "openai/gpt-oss-120b";
+	}
+	return configuredModel;
+};
 
 const buildFallbackResponse = (question) => {
 	const cleaned = String(question || "learning").replace(/^Teach this clearly with examples and next steps:\s*/i, "").replace(/^Describe and teach about\s*/i, "").trim() || "learning";
@@ -74,7 +81,7 @@ This is the question: "${question}"
 				content: prompt,
 			},
 		],
-		model: process.env.AI_MODEL || "llama-3.3-70b-versatile",
+		model: getAIModel(),
 	};
 
 	if (!API_URL || !GROQ_API_KEY) {
@@ -112,13 +119,8 @@ This is the question: "${question}"
 			);
 		}
 	} catch (error) {
-		// If it's already an ApiError, re-throw it
-		if (error instanceof ApiError) {
-			throw error;
-		}
-		// Otherwise, provide more details about the error
-		console.error("AI API Error:", error.message);
-		throw new ApiError(500, `AI API Error: ${error.message || "Cannot convert to json"}`);
+		console.error("AI API Error:", error.response?.status || error.statusCode || "unknown", error.response?.data?.error?.message || error.message);
+		return res.status(200).json(new ApiResponse(200, buildFallbackResponse(question), "AI service temporarily unavailable; fallback response provided."));
 	}
 
 	// console.log(question,aiResponse)
@@ -134,12 +136,13 @@ const generateQuestion = asyncHandler(async (req, res) => {
 	}
 
 	const questionPromises = topics.map(async (topic) => {
-		if (process.env.DEMO_MODE === "true" || !API_URL || !GROQ_API_KEY) {
-			return { topic, questions: buildFallbackQuestions(topic) };
+		const demoMode = process.env.DEMO_MODE === "true";
+		if (!API_URL || !GROQ_API_KEY) {
+			return { topic, questions: buildFallbackQuestions(topic), fallback: true };
 		}
 
 		// 1. Check if questions exist in DB
-		const existingQuestions = await Question.find({ topic }).limit(10);
+		const existingQuestions = demoMode ? [] : await Question.find({ topic }).limit(10);
 		if (existingQuestions.length >= 5) {
 			console.log(`Using cached questions for topic: ${topic}`);
 			return { topic, questions: existingQuestions };
@@ -176,7 +179,7 @@ const generateQuestion = asyncHandler(async (req, res) => {
 					content: prompt,
 				},
 			],
-			model: process.env.AI_MODEL || "llama-3.3-70b-versatile",
+			model: getAIModel(),
 		};
 
 		try {
@@ -218,25 +221,17 @@ const generateQuestion = asyncHandler(async (req, res) => {
 			}
 
 			// 3. Save to DB
-			const savedQuestions = await Promise.all(
-				questionsData.map(async (q) => {
-					const newQuestion = new Question({
-						topic,
-						question: q.question,
-						options: q.options,
-						correct: q.correct,
-					});
-					return await newQuestion.save();
-				})
-			);
+			const savedQuestions = demoMode
+				? questionsData
+				: await Promise.all(questionsData.map(async (q) => {
+					const newQuestion = new Question({ topic, question: q.question, options: q.options, correct: q.correct });
+					return newQuestion.save();
+				}));
 
 			return { topic, questions: savedQuestions };
 		} catch (error) {
-			console.error(
-				`❌ Error generating questions for "${topic}":`,
-				error.message
-			);
-			return { topic, error: error.message };
+			console.error(`AI question generation failed (${error.response?.status || "unknown"}):`, error.response?.data?.error?.message || error.message);
+			return { topic, questions: buildFallbackQuestions(topic), fallback: true };
 		}
 	});
 
