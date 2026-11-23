@@ -251,7 +251,7 @@ export default function VidyaVritta() {
 
   return (
     <Box minH="100%" bg="#080b0b" color="white">
-      <Container maxW="container.xl" px={{ base: 0, md: 6 }} py={{ base: 3, md: 6 }}>
+      <Container maxW="632px" w="100%" px={{ base: 0, md: 4 }} py={{ base: 3, md: 6 }}>
         <VStack align="stretch" spacing={{ base: 3, md: 5 }}>
           <Flex px={{ base: 4, md: 0 }} justify="space-between" align="center" gap={3}>
             <HStack spacing={2} minW={0}>
