@@ -90,6 +90,11 @@ const userSchema = new Schema(
                 type: Boolean,
                 default: true,
             },
+            applicationLanguage: {
+                type: String,
+                default: "en-US",
+                maxlength: 16,
+            },
         },
     },
     { timestamps: true }

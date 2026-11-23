@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -10,6 +10,12 @@ const Layout = () => {
     const user = useSelector((state) => state.authSlice.userData);
     const bg = useColorModeValue('gray.50', 'gray.900');
     const scrollbarThumb = useColorModeValue('gray.300', 'gray.600');
+
+    useEffect(() => {
+        const language = user?.preferences?.applicationLanguage || window.localStorage.getItem('paa_application_language') || 'en-US';
+        document.documentElement.lang = language;
+        window.localStorage.setItem('paa_application_language', language);
+    }, [user?.preferences?.applicationLanguage]);
 
     if (!user) {
         return <Navigate to="/" replace />;

@@ -23,6 +23,7 @@ import {
 import { FaMicrophone, FaMicrophoneSlash, FaPaperPlane, FaTrash, FaRobot, FaLightbulb, FaVolumeUp, FaVolumeMute, FaGlobe } from "react-icons/fa";
 import { addTopic, deleteTopic } from "../store/chatTopicSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { applicationLanguages } from "../utils/languages";
 import { deleteChat, setChat } from "../store/prevChatSlice";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -36,29 +37,6 @@ const starterPrompts = [
   "Explain operating systems with examples",
   "Quiz me on database normalization",
   "Summarize machine learning basics",
-];
-
-const languageOptions = [
-  { value: "en-US", label: "English" },
-  { value: "hi-IN", label: "Hindi" },
-  { value: "te-IN", label: "Telugu" },
-  { value: "ta-IN", label: "Tamil" },
-  { value: "kn-IN", label: "Kannada" },
-  { value: "ml-IN", label: "Malayalam" },
-  { value: "mr-IN", label: "Marathi" },
-  { value: "bn-IN", label: "Bengali" },
-  { value: "gu-IN", label: "Gujarati" },
-  { value: "pa-IN", label: "Punjabi" },
-  { value: "ur-PK", label: "Urdu" },
-  { value: "ar-SA", label: "Arabic" },
-  { value: "fr-FR", label: "French" },
-  { value: "de-DE", label: "German" },
-  { value: "es-ES", label: "Spanish" },
-  { value: "pt-BR", label: "Portuguese" },
-  { value: "ru-RU", label: "Russian" },
-  { value: "ja-JP", label: "Japanese" },
-  { value: "ko-KR", label: "Korean" },
-  { value: "zh-CN", label: "Chinese" },
 ];
 
 const markdownComponents = {
@@ -80,7 +58,7 @@ const markdownComponents = {
 
 function ChatBox({ autoStartVoice = false, voiceMode = false }) {
   const preferredBrowserLanguage = typeof window !== "undefined" ? window.navigator.language : "en-US";
-  const normalizedDefaultLanguage = languageOptions.some((option) => option.value === preferredBrowserLanguage)
+  const normalizedDefaultLanguage = applicationLanguages.some((option) => option.value === preferredBrowserLanguage)
     ? preferredBrowserLanguage
     : preferredBrowserLanguage?.split?.("-")?.[0] === "hi"
       ? "hi-IN"
@@ -92,7 +70,9 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
   const [isListening, setIsListening] = useState(false);
   const [voiceReplies, setVoiceReplies] = useState(false);
   const [availableVoices, setAvailableVoices] = useState([]);
-  const [selectedLanguage, setSelectedLanguage] = useState(normalizedDefaultLanguage);
+  const user = useSelector((state) => state.authSlice.userData);
+  const savedLanguage = user?.preferences?.applicationLanguage || window.localStorage.getItem("paa_application_language");
+  const [selectedLanguage, setSelectedLanguage] = useState(() => applicationLanguages.some((option) => option.value === savedLanguage) ? savedLanguage : normalizedDefaultLanguage);
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const prevChats = useSelector((state) => state.chatHistory.chats);
@@ -271,7 +251,7 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
     setIsListening(true);
 
     if (!quiet) {
-      toast({ title: "Voice assistant listening", description: `Speak in ${languageOptions.find((item) => item.value === selectedLanguage)?.label || "your selected language"}.`, status: "info", duration: 2200 });
+      toast({ title: "Voice assistant listening", description: `Speak in ${applicationLanguages.find((item) => item.value === selectedLanguage)?.label || "your selected language"}.`, status: "info", duration: 2200 });
     }
 
     recognition.onresult = (event) => {
@@ -368,7 +348,7 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
                 color="white"
                 iconColor="white"
               >
-                {languageOptions.map((option) => (
+                {applicationLanguages.map((option) => (
                   <option key={option.value} value={option.value} style={{ color: '#111827' }}>
                     {option.label}
                   </option>
@@ -447,7 +427,7 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
             <Flex justify="space-between" align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={3} bg={controlBg} border="1px solid" borderColor={inputBorder} borderRadius="2xl" px={4} py={3}>
               <Text fontSize="sm" color={inputColor}>
                 {speechRecognitionSupported
-                  ? `Voice assistant is ready for ${languageOptions.find((item) => item.value === selectedLanguage)?.label || "your selected language"}.`
+                  ? `Voice assistant is ready for ${applicationLanguages.find((item) => item.value === selectedLanguage)?.label || "your selected language"}.`
                   : "Voice assistant needs a browser with speech recognition support."}
               </Text>
               <Button colorScheme={isListening ? "red" : "purple"} size="md" onClick={() => handleVoiceInput()} leftIcon={<Icon as={isListening ? FaMicrophoneSlash : FaMicrophone} boxSize={3.5} />}>

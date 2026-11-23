@@ -42,6 +42,7 @@ import { FaUserEdit, FaSignOutAlt, FaCog, FaBell, FaLock, FaBrain, FaFire, FaGra
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiFetch, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 import { clearDeviceSession, getStorageMode, isDeviceStorageEnabled, setStorageMode as persistStorageMode } from "../utils/deviceStorage";
+import { applicationLanguages } from "../utils/languages";
 
 const skillTags = ["AI Chat", "Research", "Video Learning", "Quiz Practice", "Revision"];
 const defaultPreferences = {
@@ -49,6 +50,7 @@ const defaultPreferences = {
   twoFactorAuth: false,
   adaptivePractice: true,
   dailyMotivationEmails: true,
+  applicationLanguage: "en-US",
 };
 
 function UserSettings() {
@@ -101,6 +103,7 @@ function UserSettings() {
           ...(user.preferences || {}),
         },
       });
+      document.documentElement.lang = user.preferences?.applicationLanguage || "en-US";
     }
   }, [user]);
 
@@ -179,6 +182,16 @@ function UserSettings() {
         ...prev.preferences,
         [key]: !prev.preferences[key],
       },
+    }));
+  };
+
+  const handleApplicationLanguageChange = (event) => {
+    const applicationLanguage = event.target.value;
+    document.documentElement.lang = applicationLanguage;
+    window.localStorage.setItem("paa_application_language", applicationLanguage);
+    setFormData((prev) => ({
+      ...prev,
+      preferences: { ...prev.preferences, applicationLanguage },
     }));
   };
 
@@ -477,6 +490,13 @@ function UserSettings() {
                   </TabPanel>
                   <TabPanel>
                     <VStack spacing={6} align="stretch" maxW="lg">
+                      <FormControl>
+                        <FormLabel>Application language</FormLabel>
+                        <Select value={formData.preferences.applicationLanguage || "en-US"} onChange={handleApplicationLanguageChange} bg={editableBg} borderColor={borderColor}>
+                          {applicationLanguages.map((language) => <option key={language.value} value={language.value}>{language.label}</option>)}
+                        </Select>
+                        <Text mt={2} fontSize="sm" color={mutedColor}>This preference is saved with your profile and used for assistant replies and speech input.</Text>
+                      </FormControl>
                       <Box p={4} borderWidth="1px" borderColor={borderColor} borderRadius="xl">
                         <Flex justify="space-between" align={{ base: "start", sm: "center" }} gap={4} direction={{ base: "column", sm: "row" }}>
                           <Box>

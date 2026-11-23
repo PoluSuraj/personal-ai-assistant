@@ -595,6 +595,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
             twoFactorAuth: preferences.twoFactorAuth ?? user.preferences?.twoFactorAuth ?? false,
             adaptivePractice: preferences.adaptivePractice ?? user.preferences?.adaptivePractice ?? true,
             dailyMotivationEmails: preferences.dailyMotivationEmails ?? user.preferences?.dailyMotivationEmails ?? true,
+            applicationLanguage: preferences.applicationLanguage ?? user.preferences?.applicationLanguage ?? "en-US",
         };
     }
 
@@ -795,6 +796,9 @@ const updateManagedUser = asyncHandler(async (req, res) => {
     if (preferences && typeof preferences === "object") {
         for (const key of ["emailNotifications", "adaptivePractice", "dailyMotivationEmails"]) {
             if (typeof preferences[key] === "boolean") user.preferences[key] = preferences[key];
+        }
+        if (typeof preferences.applicationLanguage === "string" && preferences.applicationLanguage.length <= 16) {
+            user.preferences.applicationLanguage = preferences.applicationLanguage;
         }
     }
     await user.save();
