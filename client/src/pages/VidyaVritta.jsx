@@ -53,6 +53,7 @@ const loadYoutubeApi = () => {
 
 function StudyVideoPlayer({ videoId, title, muted, onMuteChange }) {
   const playerId = useId();
+  const mountRef = useRef(null);
   const playerRef = useRef(null);
   const [apiFailed, setApiFailed] = useState(false);
   const propsRef = useRef({ title, muted, onMuteChange });
@@ -62,8 +63,13 @@ function StudyVideoPlayer({ videoId, title, muted, onMuteChange }) {
     let disposed = false;
     let pollId;
     loadYoutubeApi().then((youtube) => {
-      if (disposed) return;
-      playerRef.current = new youtube.Player(playerId, {
+      if (disposed || !mountRef.current) return;
+      const playerTarget = document.createElement("div");
+      playerTarget.id = playerId;
+      playerTarget.style.width = "100%";
+      playerTarget.style.height = "100%";
+      mountRef.current.appendChild(playerTarget);
+      playerRef.current = new youtube.Player(playerTarget.id, {
         host: "https://www.youtube-nocookie.com",
         videoId,
         playerVars: { autoplay: 1, mute: propsRef.current.muted ? 1 : 0, controls: 1, playsinline: 1, rel: 0, modestbranding: 1 },
@@ -99,7 +105,7 @@ function StudyVideoPlayer({ videoId, title, muted, onMuteChange }) {
     return <Box as="iframe" title={title} src={fallbackUrl} position="absolute" inset={0} w="100%" h="100%" border={0} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />;
   }
 
-  return <Box id={playerId} position="absolute" inset={0} w="100%" h="100%" />;
+  return <Box ref={mountRef} position="absolute" inset={0} w="100%" h="100%" />;
 }
 
 const readList = (key) => {
