@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import {
   Alert,
   AlertIcon,
@@ -28,6 +28,79 @@ const suggestions = ["Mathematics", "Physics", "Chemistry", "Biology", "History"
 const SAVED_KEY = "paa_vidyavritta_saved";
 const LIKED_KEY = "paa_vidyavritta_liked";
 const FEED_SIZE = 6;
+let youtubeApiPromise;
+
+const loadYoutubeApi = () => {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (youtubeApiPromise) return youtubeApiPromise;
+
+  youtubeApiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      try {
+        previousReady?.();
+      } finally {
+        resolve(window.YT);
+      }
+    };
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    script.onerror = () => reject(new Error("Could not load the video player."));
+    document.head.appendChild(script);
+  });
+  return youtubeApiPromise;
+};
+
+function StudyVideoPlayer({ videoId, title, muted, onMuteChange }) {
+  const playerId = useId();
+  const playerRef = useRef(null);
+  const [apiFailed, setApiFailed] = useState(false);
+  const propsRef = useRef({ title, muted, onMuteChange });
+  propsRef.current = { title, muted, onMuteChange };
+
+  useEffect(() => {
+    let disposed = false;
+    let pollId;
+    loadYoutubeApi().then((youtube) => {
+      if (disposed) return;
+      playerRef.current = new youtube.Player(playerId, {
+        host: "https://www.youtube-nocookie.com",
+        videoId,
+        playerVars: { autoplay: 1, mute: propsRef.current.muted ? 1 : 0, controls: 1, playsinline: 1, rel: 0, modestbranding: 1 },
+        events: {
+          onReady: ({ target }) => {
+            const currentProps = propsRef.current;
+            target.getIframe().title = currentProps.title;
+            currentProps.muted ? target.mute() : target.unMute();
+            target.playVideo();
+            pollId = window.setInterval(() => propsRef.current.onMuteChange(target.isMuted() === false), 400);
+          },
+          onAutoplayBlocked: ({ target }) => {
+            if (!propsRef.current.muted) return;
+            target.mute();
+            target.playVideo();
+          },
+        },
+      });
+    }).catch(() => {
+      if (!disposed) setApiFailed(true);
+    });
+
+    return () => {
+      disposed = true;
+      window.clearInterval(pollId);
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
+  }, [playerId, videoId]);
+
+  if (apiFailed) {
+    const fallbackUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=${muted ? 1 : 0}&controls=1&playsinline=1&rel=0&modestbranding=1`;
+    return <Box as="iframe" title={title} src={fallbackUrl} position="absolute" inset={0} w="100%" h="100%" border={0} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />;
+  }
+
+  return <Box id={playerId} position="absolute" inset={0} w="100%" h="100%" />;
+}
 
 const readList = (key) => {
   try {
@@ -67,6 +140,7 @@ export default function VidyaVritta() {
   const [savedReels, setSavedReels] = useState(readSavedReels);
   const [likedIds, setLikedIds] = useState(() => readList(LIKED_KEY));
   const [savedOnly, setSavedOnly] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [searchVersion, setSearchVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -302,7 +376,6 @@ export default function VidyaVritta() {
                   const isActive = index === activeIndex;
                   const isSaved = savedIds.includes(videoId);
                   const isLiked = likedIds.includes(videoId);
-                  const playerUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=1&controls=1&playsinline=1&rel=0&modestbranding=1`;
                   return (
                     <Flex key={videoId} h="full" minH="full" w="full" scrollSnapAlign="start" justify="center" align="stretch" py={0}>
                       <Box
@@ -318,7 +391,7 @@ export default function VidyaVritta() {
                         borderColor="whiteAlpha.200"
                       >
                         {isActive ? (
-                          <Box as="iframe" title={title} src={playerUrl} position="absolute" inset={0} w="100%" h="100%" border={0} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                          <StudyVideoPlayer videoId={videoId} title={title} muted={!soundEnabled} onMuteChange={setSoundEnabled} />
                         ) : (
                           <>
                             <Box position="absolute" inset={0} bgImage={`url("${thumbnail}")`} bgSize="cover" bgPos="center" />
