@@ -330,7 +330,7 @@ export default function VidyaVritta() {
 
                         <Flex position="absolute" top={3} left={3} right={3} zIndex={2} justify="space-between" align="center" pointerEvents="none">
                           <Badge bg="blackAlpha.700" color="white" px={3} py={1} borderRadius="full">STUDY SHORT</Badge>
-                          <Text fontSize="xs" color="white" bg="blackAlpha.600" px={3} py={1} borderRadius="full">{index + 1} / {visibleReels.length}</Text>
+                          <Text fontSize="xs" color="white" bg="blackAlpha.600" px={3} py={1} borderRadius="full">LESSON {index + 1}</Text>
                         </Flex>
 
                         <VStack position="absolute" right={3} bottom="25%" spacing={4} zIndex={3}>
