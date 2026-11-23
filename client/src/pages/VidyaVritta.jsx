@@ -28,81 +28,6 @@ const suggestions = ["Mathematics", "Physics", "Chemistry", "Biology", "History"
 const SAVED_KEY = "paa_vidyavritta_saved";
 const LIKED_KEY = "paa_vidyavritta_liked";
 const FEED_SIZE = 6;
-let youtubeApiPromise;
-
-const loadYoutubeApi = () => {
-  if (window.YT?.Player) return Promise.resolve(window.YT);
-  if (youtubeApiPromise) return youtubeApiPromise;
-
-  youtubeApiPromise = new Promise((resolve, reject) => {
-    const previousReady = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      previousReady?.();
-      resolve(window.YT);
-    };
-    const existingScript = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.src = "https://www.youtube.com/iframe_api";
-      script.onerror = () => reject(new Error("Could not start the video player."));
-      document.head.appendChild(script);
-    }
-  });
-  return youtubeApiPromise;
-};
-
-function StudyVideoPlayer({ videoId, title }) {
-  const mountRef = useRef(null);
-  const playerRef = useRef(null);
-  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
-
-  useEffect(() => {
-    let disposed = false;
-    loadYoutubeApi().then((youtube) => {
-      if (disposed || !mountRef.current) return;
-      playerRef.current = new youtube.Player(mountRef.current, {
-        host: "https://www.youtube-nocookie.com",
-        videoId,
-        playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, modestbranding: 1 },
-        events: {
-          onReady: ({ target }) => target.playVideo(),
-          onAutoplayBlocked: ({ target }) => {
-            setAutoplayBlocked(true);
-            target.mute();
-            target.playVideo();
-          },
-        },
-      });
-    }).catch(() => setAutoplayBlocked(true));
-
-    return () => {
-      disposed = true;
-      playerRef.current?.destroy();
-      playerRef.current = null;
-    };
-  }, [videoId]);
-
-  const enableSound = () => {
-    const player = playerRef.current;
-    if (!player) return;
-    player.unMute();
-    player.setVolume(100);
-    player.playVideo();
-    setAutoplayBlocked(false);
-  };
-
-  return (
-    <>
-      <Box ref={mountRef} position="absolute" inset={0} w="100%" h="100%" />
-      {autoplayBlocked ? (
-        <Button position="absolute" zIndex={4} top={16} left="50%" transform="translateX(-50%)" size="sm" colorScheme="teal" onClick={enableSound}>
-          Video is playing · Turn sound on
-        </Button>
-      ) : null}
-      <Text position="absolute" w="1px" h="1px" overflow="hidden" clipPath="inset(50%)">{title}</Text>
-    </>
-  );
-}
 
 const readList = (key) => {
   try {
@@ -377,6 +302,7 @@ export default function VidyaVritta() {
                   const isActive = index === activeIndex;
                   const isSaved = savedIds.includes(videoId);
                   const isLiked = likedIds.includes(videoId);
+                  const playerUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=1&controls=1&playsinline=1&rel=0&modestbranding=1`;
                   return (
                     <Flex key={videoId} h="full" minH="full" w="full" scrollSnapAlign="start" justify="center" align="stretch" py={0}>
                       <Box
@@ -392,7 +318,7 @@ export default function VidyaVritta() {
                         borderColor="whiteAlpha.200"
                       >
                         {isActive ? (
-                          <StudyVideoPlayer videoId={videoId} title={title} />
+                          <Box as="iframe" title={title} src={playerUrl} position="absolute" inset={0} w="100%" h="100%" border={0} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
                         ) : (
                           <>
                             <Box position="absolute" inset={0} bgImage={`url("${thumbnail}")`} bgSize="cover" bgPos="center" />
