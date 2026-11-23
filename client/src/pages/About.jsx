@@ -16,18 +16,18 @@ const TeamMember = ({ name, role, email, github, linkedin, twitter, photo, websi
   const twitterHover = useColorModeValue('blue.500', 'brand.200');
 
   return (
-    <Box as={website ? 'a' : 'div'} href={website || undefined} target={website ? '_blank' : undefined} rel={website ? 'noreferrer' : undefined} bg={bgColor} rounded="lg" shadow="md" p={6} textAlign="center" border="1px" borderColor={borderColor} _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }} transition="all 0.3s" cursor={website ? 'pointer' : 'default'}>
-      <VStack spacing={4}>
+    <Box as={website ? 'a' : 'div'} href={website || undefined} target={website ? '_blank' : undefined} rel={website ? 'noreferrer' : undefined} bg={bgColor} rounded="lg" shadow="md" p={6} textAlign="center" border="1px" borderColor={borderColor} h="100%" minW={0} _hover={{ shadow: 'lg', transform: 'translateY(-2px)' }} transition="all 0.3s" cursor={website ? 'pointer' : 'default'}>
+      <VStack spacing={4} h="100%" minW={0}>
         <Avatar size="2xl" name={name} src={photo} border="4px" borderColor="brand.500" />
-        {website ? <Text fontSize="xs" color={roleColor} fontWeight="semibold">Open portfolio</Text> : null}
-        <Box>
+        <Text visibility={website ? 'visible' : 'hidden'} fontSize="xs" color={roleColor} fontWeight="semibold" minH="16px">Open portfolio</Text>
+        <Box minH="76px" w="100%">
           <Heading size="md" mb={2} color={textColor}>{name}</Heading>
           <Text color={roleColor} fontSize="sm" fontWeight="600" mb={4}>{role}</Text>
         </Box>
-        <VStack spacing={3} width="100%">
-          <HStack color={emailColor} fontSize="sm" justify="center">
+        <VStack spacing={3} width="100%" mt="auto" minW={0}>
+          <HStack color={emailColor} fontSize="sm" justify="center" w="100%" minW={0} minH="40px">
             <Icon as={FaEnvelope} />
-            <Text>{email}</Text>
+            <Text minW={0} overflowWrap="anywhere" textAlign="left">{email}</Text>
           </HStack>
           <HStack justify="center" spacing={4}>
             {linkedin && <Link href={linkedin} isExternal title="LinkedIn"><Icon as={FaLinkedin} w={5} h={5} color={linkedInColor} _hover={{ color: linkedInHover }} /></Link>}
@@ -62,7 +62,7 @@ export default function About() {
       </Box>
       <Box>
         <Heading size="lg" mb={8}>Meet Our Team</Heading>
-        <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6} mb={10}>
+        <Grid templateColumns={{ base: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' }} alignItems="stretch" gap={6} mb={10}>
           {teamMembers.map((member) => <TeamMember key={member.email} {...member} />)}
         </Grid>
         <Heading size="md" mb={6} textAlign="center" color={guideColor}>Project Guide</Heading>
