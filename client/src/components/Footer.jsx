@@ -209,7 +209,15 @@ export default function Footer() {
                     spacing={4}
                     justify={{ base: 'center', md: 'center' }} // Centered for cleaner look or space-between
                     align={{ base: 'center', md: 'center' }}>
-                    <Text fontSize="sm">© {new Date().getFullYear()} Personal AI Assistant. All rights reserved.</Text>
+                    <Stack direction={{ base: 'column', sm: 'row' }} spacing={{ base: 1, sm: 4 }} align="center" textAlign="center">
+                        <Text fontSize="sm">© {new Date().getFullYear()} Personal AI Assistant. All rights reserved.</Text>
+                        <Text fontSize="sm">
+                            Created in India ❤️{' '}
+                            <Link href="https://polusuraj.github.io/portfolio/" isExternal color={useColorModeValue('brand.600', 'brand.300')} fontWeight="semibold">
+                                Polusuraj
+                            </Link>
+                        </Text>
+                    </Stack>
                 </Container>
             </Box>
         </Box>
