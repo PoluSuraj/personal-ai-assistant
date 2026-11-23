@@ -204,7 +204,8 @@ export default function Footer() {
                 <Container
                     as={Stack}
                     maxW={'6xl'}
-                    py={4}
+                    pt={4}
+                    pb={{ base: 'calc(64px + env(safe-area-inset-bottom) + 16px)', md: 4 }}
                     direction={{ base: 'column', md: 'row' }}
                     spacing={4}
                     justify={{ base: 'center', md: 'center' }} // Centered for cleaner look or space-between
