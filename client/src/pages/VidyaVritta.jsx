@@ -15,12 +15,14 @@ import {
   InputGroup,
   InputLeftElement,
   Spinner,
+  Textarea,
   Text,
   VStack,
   useToast,
 } from "@chakra-ui/react";
-import { FaBookOpen, FaHeart, FaPlay, FaSearch, FaShare } from "react-icons/fa";
+import { FaBookOpen, FaHeart, FaPlay, FaSearch, FaShare, FaStar } from "react-icons/fa";
 import { apiFetch } from "../utils/api";
+import { useSelector } from "react-redux";
 
 const suggestions = ["Mathematics", "Physics", "Chemistry", "Biology", "History", "Coding", "Study skills"];
 const SAVED_KEY = "paa_vidyavritta_saved";
@@ -48,13 +50,14 @@ const selectFreshFeed = (items, query) => {
   const historyKey = `paa_vidyavritta_recent:${query.trim().toLowerCase()}`;
   const previousIds = readList(historyKey);
   const unseen = candidates.filter((item) => !previousIds.includes(item.id?.videoId));
-  const selection = [...unseen, ...candidates.filter((item) => previousIds.includes(item.id?.videoId))].slice(0, FEED_SIZE);
+  const ordered = [...unseen, ...candidates.filter((item) => previousIds.includes(item.id?.videoId))];
+  const firstBatch = ordered.slice(0, FEED_SIZE);
   try {
-    window.localStorage.setItem(historyKey, JSON.stringify(selection.map((item) => item.id.videoId)));
+    window.localStorage.setItem(historyKey, JSON.stringify(firstBatch.map((item) => item.id.videoId)));
   } catch {
     // A full or disabled local storage should not prevent the feed from loading.
   }
-  return selection;
+  return { firstBatch, remaining: ordered.slice(FEED_SIZE) };
 };
 
 export default function VidyaVritta() {
@@ -67,10 +70,21 @@ export default function VidyaVritta() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [searchVersion, setSearchVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextPageToken, setNextPageToken] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [needsYoutubeKey, setNeedsYoutubeKey] = useState(false);
   const feedRef = useRef(null);
+  const pendingReelsRef = useRef([]);
+  const seenIdsRef = useRef(new Set());
+  const loadingMoreRef = useRef(false);
+  const feedRequestIdRef = useRef(0);
   const toast = useToast();
+  const user = useSelector((state) => state.authSlice.userData || {});
 
   const visibleReels = savedOnly ? savedReels : reels;
   const savedIds = savedReels.map((reel) => reel.id.videoId);
@@ -78,13 +92,25 @@ export default function VidyaVritta() {
   useEffect(() => {
     if (!submittedQuery) return undefined;
     const controller = new AbortController();
+    feedRequestIdRef.current += 1;
+    pendingReelsRef.current = [];
+    seenIdsRef.current = new Set();
+    loadingMoreRef.current = false;
+    setNextPageToken("");
+    setHasMore(false);
     setIsLoading(true);
+    setIsLoadingMore(false);
     setErrorMessage("");
     setNeedsYoutubeKey(false);
     apiFetch(`/api/v1/youtube/search?format=study-short&query=${encodeURIComponent(`${submittedQuery} educational short lesson`)}`, { signal: controller.signal })
       .then((result) => {
         const candidates = result.fallback ? [] : (Array.isArray(result.data) ? result.data : []);
-        setReels(selectFreshFeed(candidates, submittedQuery));
+        const freshFeed = selectFreshFeed(candidates, submittedQuery);
+        freshFeed.firstBatch.forEach((item) => seenIdsRef.current.add(item.id.videoId));
+        pendingReelsRef.current = freshFeed.remaining;
+        setReels(freshFeed.firstBatch);
+        setNextPageToken(result.nextPageToken || "");
+        setHasMore(freshFeed.remaining.length > 0 || Boolean(result.nextPageToken));
         setNeedsYoutubeKey(Boolean(result.fallback));
         setActiveIndex(0);
         if (feedRef.current) feedRef.current.scrollTop = 0;
@@ -114,10 +140,52 @@ export default function VidyaVritta() {
     if (feedRef.current) feedRef.current.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const loadMore = async () => {
+    if (savedOnly || loadingMoreRef.current) return;
+    const requestId = feedRequestIdRef.current;
+    loadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      let batch = pendingReelsRef.current.splice(0, FEED_SIZE);
+      let pageToken = nextPageToken;
+
+      if (!batch.length && pageToken) {
+        const result = await apiFetch(`/api/v1/youtube/search?format=study-short&query=${encodeURIComponent(`${submittedQuery} educational short lesson`)}&pageToken=${encodeURIComponent(pageToken)}`);
+        if (requestId !== feedRequestIdRef.current) return;
+        const candidates = Array.isArray(result.data) ? result.data : [];
+        const unseen = candidates.filter((item) => item.id?.videoId && !seenIdsRef.current.has(item.id.videoId));
+        for (let index = unseen.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [unseen[index], unseen[swapIndex]] = [unseen[swapIndex], unseen[index]];
+        }
+        batch = unseen.splice(0, FEED_SIZE);
+        pendingReelsRef.current = unseen;
+        pageToken = result.nextPageToken || "";
+        setNextPageToken(pageToken);
+      }
+
+      if (requestId !== feedRequestIdRef.current) return;
+      batch.forEach((item) => seenIdsRef.current.add(item.id.videoId));
+      if (batch.length) setReels((current) => [...current, ...batch]);
+      const moreAvailable = pendingReelsRef.current.length > 0 || Boolean(pageToken);
+      setHasMore(moreAvailable);
+      if (!moreAvailable && !batch.length) setErrorMessage("You have reached the end of the available lessons for this search. Try another subject for more.");
+    } catch (error) {
+      if (requestId === feedRequestIdRef.current) setErrorMessage(error.message || "Could not load more lessons.");
+    } finally {
+      if (requestId === feedRequestIdRef.current) {
+        loadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+    }
+  };
+
   const onFeedScroll = () => {
     if (!feedRef.current) return;
     const nextIndex = Math.round(feedRef.current.scrollTop / feedRef.current.clientHeight);
     setActiveIndex((current) => current === nextIndex ? current : nextIndex);
+    const remaining = feedRef.current.scrollHeight - feedRef.current.scrollTop - feedRef.current.clientHeight;
+    if (remaining < feedRef.current.clientHeight * 1.5 && hasMore) loadMore();
   };
 
   const toggleSaved = (reel) => {
@@ -144,6 +212,35 @@ export default function VidyaVritta() {
       }
     } catch (error) {
       if (error.name !== "AbortError") toast({ title: "Could not share this lesson", status: "error", duration: 2000, isClosable: true });
+    }
+  };
+
+  const sendFeedback = async () => {
+    if (feedback.trim().length < 10) {
+      toast({ title: "Please add a little more detail", status: "warning", duration: 2200, isClosable: true });
+      return;
+    }
+    if (!user.email) {
+      toast({ title: "Sign in to send app feedback", status: "warning", duration: 2200, isClosable: true });
+      return;
+    }
+    setIsSendingFeedback(true);
+    try {
+      await apiFetch("/api/v1/contact/send", {
+        method: "POST",
+        body: JSON.stringify({
+          name: user.name || "VidyaVritta user",
+          email: user.email,
+          subject: "VidyaVritta app feedback",
+          message: `App rating: ${feedbackRating}/5\n\n${feedback.trim()}`,
+        }),
+      });
+      setFeedback("");
+      toast({ title: "Thanks for helping us improve the app", status: "success", duration: 2500, isClosable: true });
+    } catch (error) {
+      toast({ title: error.message || "Could not send your feedback", status: "error", duration: 2500, isClosable: true });
+    } finally {
+      setIsSendingFeedback(false);
     }
   };
 
@@ -262,6 +359,12 @@ export default function VidyaVritta() {
                     </Flex>
                   );
                 })}
+                {!savedOnly && isLoadingMore ? (
+                  <Flex h="72px" align="center" justify="center" gap={2} color="whiteAlpha.800">
+                    <Spinner size="sm" color="teal.300" />
+                    <Text fontSize="sm">Loading more lessons…</Text>
+                  </Flex>
+                ) : null}
               </Box>
               <VStack display={{ base: "none", md: "flex" }} justify="center" spacing={2}>
                 <IconButton aria-label="Previous lesson" icon={<Icon as={FaPlay} transform="rotate(-90deg)" />} variant="outline" onClick={() => moveFeed(-1)} />
@@ -279,6 +382,18 @@ export default function VidyaVritta() {
               <Text color="whiteAlpha.700" mt={2}>Quick lessons selected from YouTube’s Education category.</Text>
             </Flex>
           )}
+
+          <Box mx={{ base: 4, md: 0 }} pt={6} borderTop="1px solid" borderColor="whiteAlpha.200">
+            <Heading size="md">App feedback</Heading>
+            <Text mt={1} color="whiteAlpha.700">Tell us what is working well or what you would improve.</Text>
+            <HStack mt={3} spacing={1} aria-label={`App rating: ${feedbackRating} out of 5`}>
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <IconButton key={rating} aria-label={`Rate app ${rating} out of 5`} icon={<Icon as={FaStar} />} color={rating <= feedbackRating ? "yellow.300" : "whiteAlpha.500"} variant="ghost" onClick={() => setFeedbackRating(rating)} />
+              ))}
+            </HStack>
+            <Textarea mt={2} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Share your feedback (at least 10 characters)" maxLength={2000} bg="#171b1b" borderColor="whiteAlpha.200" borderRadius="md" />
+            <Button mt={3} colorScheme="teal" onClick={sendFeedback} isLoading={isSendingFeedback} isDisabled={!feedback.trim()}>Send app feedback</Button>
+          </Box>
         </VStack>
       </Container>
     </Box>

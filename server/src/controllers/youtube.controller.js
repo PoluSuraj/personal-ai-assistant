@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import axios from "axios";
 
 const searchVideos = asyncHandler(async (req, res) => {
-    const { query, format } = req.query;
+    const { query, format, pageToken } = req.query;
 
     console.log(`YouTube search query: ${query}`);
 
@@ -40,6 +40,7 @@ const searchVideos = asyncHandler(async (req, res) => {
                 type: "video",
                 ...(format === "study-short" ? { videoCategoryId: "27", videoDuration: "short" } : {}),
                 maxResults: format === "study-short" ? 25 : 6,
+                ...(format === "study-short" && pageToken ? { pageToken } : {}),
                 key: API_KEY
             }
         });
@@ -49,7 +50,8 @@ const searchVideos = asyncHandler(async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data: items
+            data: items,
+            ...(format === "study-short" && response.data.nextPageToken ? { nextPageToken: response.data.nextPageToken } : {})
         });
     } catch (error) {
         console.error("YouTube API Error Details:", error.response ? error.response.data : error.message);
