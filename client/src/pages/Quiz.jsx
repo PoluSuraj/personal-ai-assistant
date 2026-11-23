@@ -57,6 +57,7 @@ function Quiz() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [savedScores, setSavedScores] = useState([]);
+  const attemptIdRef = useRef("");
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
   const [securityDeadline, setSecurityDeadline] = useState(null);
   const [securityCountdown, setSecurityCountdown] = useState(0);
@@ -121,13 +122,27 @@ function Quiz() {
     setSubmitted(true);
     setAutoSubmitReason(forcedReason);
     setSavedScores((prev) => [{ topic, score: newScore, total: questions.length }, ...prev].slice(0, 5));
+    if (attemptIdRef.current) {
+      apiFetch("/api/v1/chat/activity/quiz", {
+        method: "POST",
+        body: JSON.stringify({
+          attemptId: attemptIdRef.current,
+          topic,
+          questions,
+          answers,
+          autoSubmitReason: forcedReason,
+        }),
+      }).catch((error) => {
+        toast({ title: "Quiz result could not be saved", description: error.message || "Please check your connection.", status: "error", duration: 5000, isClosable: true });
+      });
+    }
     setSecurityModalOpen(false);
     setSecurityDeadline(null);
     securityDeadlineRef.current = null;
     setSecurityCountdown(0);
     stopSecurityTimer();
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [answers, questions, topic]);
+  }, [answers, questions, topic, toast]);
 
   const resumeQuiz = () => {
     setSecurityModalOpen(false);
@@ -201,6 +216,7 @@ function Quiz() {
     }
 
     setLoading(true);
+    attemptIdRef.current = globalThis.crypto?.randomUUID?.() || `quiz-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setQuestions([]);
     setAnswers({});
     setSubmitted(false);
@@ -419,6 +435,9 @@ function Quiz() {
                     </AlertDescription>
                   </Box>
                 </Alert>
+                <Text fontSize="xs" color="gray.500" maxW="xl">
+                  Quiz answers and results are saved to your account and may be reviewed by authorized administrators for support and service operations.
+                </Text>
                 {savedScores.length > 0 && <Text fontSize="sm" color="gray.500">Latest score: {savedScores[0].score}/{savedScores[0].total} on {savedScores[0].topic}</Text>}
               </VStack>
             </Box>

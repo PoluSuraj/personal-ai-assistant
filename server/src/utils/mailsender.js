@@ -215,4 +215,17 @@ const sendContactMail = async (to, name) => {
 	}
 };
 
-export { sendOtpMail, sendResetMail, sendContactMail };
+const sendAccountWelcomeMail = async (to, name, temporaryPassword, isAdmin = false) => {
+	const escapeHtml = (value) => String(value || "").replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+	const safeName = escapeHtml(name || "Learner");
+	const safeEmail = escapeHtml(to);
+	const safePassword = escapeHtml(temporaryPassword);
+	const roleText = isAdmin ? "Your account also has administrator access." : "Your account is ready for learning.";
+	const subject = "Your Personal AI Assistant account is ready";
+	const textContent = `Hello ${name || "Learner"},\n\nAn administrator created a Personal AI Assistant account for you.\n\nSign-in email: ${to}\nTemporary password: ${temporaryPassword}\n\nSign in with this temporary password. You will be required to choose a new password before accessing the workspace. Do not share this password.\n\n${roleText}\n\nIf you were not expecting this account, contact the administrator.\n\nPersonal AI Assistant Team`;
+	const htmlContent = `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#202938;max-width:600px;margin:auto"><div style="background:#171b2c;padding:24px;border-radius:12px 12px 0 0;color:#fff"><p style="margin:0;color:#c4a7ff;font-weight:bold">PERSONAL AI ASSISTANT</p><h1 style="margin:12px 0 0;font-size:24px">Your learning account is ready</h1></div><div style="padding:24px;border:1px solid #e2e8f0;border-radius:0 0 12px 12px"><p>Hello ${safeName},</p><p>An administrator created a Personal AI Assistant account for you.</p><p><strong>Sign-in email:</strong> ${safeEmail}</p><p><strong>Temporary password:</strong></p><p style="font-family:monospace;font-size:18px;letter-spacing:1px;background:#f1f5f9;padding:12px 16px;border-radius:8px;display:inline-block">${safePassword}</p><p>Sign in with this temporary password. You must choose a new password before you can access the workspace. Do not share this password.</p><p>${roleText}</p><p>If you were not expecting this account, contact the administrator.</p><p>Personal AI Assistant Team</p></div></div>`;
+	const info = await sendMail({ to, subject, textContent, htmlContent });
+	return { sent: Boolean(info), messageId: info?.messageId };
+};
+
+export { sendOtpMail, sendResetMail, sendContactMail, sendAccountWelcomeMail };

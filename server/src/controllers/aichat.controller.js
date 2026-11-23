@@ -2,6 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { Question } from "../models/question.model.js";
+import { Activity } from "../models/activity.model.js";
 import axios from "axios";
 
 import dotenv from "dotenv";
@@ -47,6 +48,58 @@ const buildFallbackQuestions = (topic) => ([
 	{ question: `What should you do after a wrong answer in ${topic}?`, options: { A: "Ignore it", B: "Review why it was wrong", C: "Delete notes", D: "Stop learning" }, correct: "B", explanation: "Mistake review turns errors into useful feedback." },
 ]);
 
+const saveChatActivity = async (req, { prompt, response, topic }) => {
+	if (!req.user?._id) throw new ApiError(401, "Sign in to save learning history");
+	try {
+		await Activity.create({
+			userId: req.user._id,
+			userEmail: req.user.email,
+			kind: req.body.activityChannel === "voice" ? "voice" : "chat",
+			prompt: String(req.body.activityQuestion || prompt).slice(0, 10000),
+			response: String(response || "").slice(0, 50000),
+			topic: String(topic || "").slice(0, 300),
+		});
+	} catch (error) {
+		console.error("Unable to save learner activity:", error.message);
+		throw new ApiError(503, "The answer was generated, but its history could not be saved. Please try again.");
+	}
+};
+
+const getActivityPage = async (userId, query) => {
+	const limit = Math.min(Math.max(Number.parseInt(query.limit, 10) || 50, 1), 100);
+	const filter = { userId };
+	if (query.cursor) {
+		let cursor;
+		try {
+			cursor = JSON.parse(query.cursor);
+		} catch {
+			throw new ApiError(400, "Invalid activity cursor");
+		}
+		const cursorDate = new Date(cursor.createdAt);
+		if (!Number.isFinite(cursorDate.getTime()) || !/^[a-f\\d]{24}$/i.test(cursor.id || "")) {
+			throw new ApiError(400, "Invalid activity cursor");
+		}
+		filter.$or = [
+			{ createdAt: { $lt: cursorDate } },
+			{ createdAt: cursorDate, _id: { $lt: cursor.id } },
+		];
+	}
+	const records = await Activity.find(filter).sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean();
+	const hasMore = records.length > limit;
+	const items = records.slice(0, limit);
+	const last = items.at(-1);
+	return {
+		items,
+		hasMore,
+		nextCursor: hasMore && last ? JSON.stringify({ createdAt: last.createdAt, id: last._id }) : null,
+	};
+};
+
+const getMyActivity = asyncHandler(async (req, res) => {
+	const page = await getActivityPage(req.user._id, req.query);
+	return res.status(200).json(new ApiResponse(200, page, "Learning history loaded"));
+});
+
 const getResponse = asyncHandler(async (req, res) => {
 	const { question } = req.body;
 	if (!question) {
@@ -85,7 +138,9 @@ This is the question: "${question}"
 	};
 
 	if (!API_URL || !GROQ_API_KEY) {
-		return res.status(200).json(new ApiResponse(200, buildFallbackResponse(question), "Fallback AI response"));
+		const fallback = buildFallbackResponse(question);
+		await saveChatActivity(req, { prompt: question, response: fallback.ai_response, topic: fallback.topic });
+		return res.status(200).json(new ApiResponse(200, fallback, "Fallback AI response"));
 	}
 
 	let ai_response;
@@ -120,13 +175,53 @@ This is the question: "${question}"
 		}
 	} catch (error) {
 		console.error("AI API Error:", error.response?.status || error.statusCode || "unknown", error.response?.data?.error?.message || error.message);
-		return res.status(200).json(new ApiResponse(200, buildFallbackResponse(question), "AI service temporarily unavailable; fallback response provided."));
+		const fallback = buildFallbackResponse(question);
+		await saveChatActivity(req, { prompt: question, response: fallback.ai_response, topic: fallback.topic });
+		return res.status(200).json(new ApiResponse(200, fallback, "AI service temporarily unavailable; fallback response provided."));
 	}
 
+	await saveChatActivity(req, { prompt: question, response: ai_response.ai_response, topic: ai_response.topic });
 	// console.log(question,aiResponse)
 	return res
 		.status(200)
 		.json(new ApiResponse(200, ai_response, "Got Response"));
+});
+
+const saveQuizAttempt = asyncHandler(async (req, res) => {
+	const { attemptId, topic, questions, answers, autoSubmitReason = "" } = req.body;
+	if (!String(topic || "").trim() || !Array.isArray(questions) || !questions.length || questions.length > 30) {
+		throw new ApiError(400, "A topic and a valid quiz question list are required");
+	}
+	if (!attemptId || String(attemptId).length > 100) throw new ApiError(400, "Quiz attempt identifier is required");
+
+	const safeQuestions = questions.map((question) => ({
+		question: String(question.question || "").slice(0, 2000),
+		options: Object.fromEntries(["A", "B", "C", "D"].filter((key) => question.options?.[key] != null).map((key) => [key, String(question.options[key]).slice(0, 1000)])),
+		correct: String(question.correct || "").slice(0, 10),
+		explanation: String(question.explanation || "").slice(0, 3000),
+	}));
+	const safeAnswers = Object.fromEntries(Object.entries(answers && typeof answers === "object" && !Array.isArray(answers) ? answers : {}).slice(0, 30).map(([index, answer]) => [index, String(answer).slice(0, 10)]));
+	const score = safeQuestions.reduce((total, question, index) => total + (String(safeAnswers[index] || "") === question.correct ? 1 : 0), 0);
+	const total = safeQuestions.length;
+	const activity = await Activity.findOneAndUpdate(
+		{ userId: req.user._id, attemptId: String(attemptId) },
+		{
+			$setOnInsert: {
+				userId: req.user._id,
+				userEmail: req.user.email,
+				kind: "quiz",
+				topic: String(topic).trim().slice(0, 300),
+				questions: safeQuestions,
+				answers: safeAnswers,
+				score,
+				total,
+				percentage: Math.round((score / total) * 100),
+				autoSubmitReason: String(autoSubmitReason || "").slice(0, 500),
+			},
+		},
+		{ new: true, upsert: true, setDefaultsOnInsert: true }
+	).lean();
+	return res.status(201).json(new ApiResponse(201, { activityId: activity._id, score, total }, "Quiz attempt saved"));
 });
 
 const generateQuestion = asyncHandler(async (req, res) => {
@@ -248,5 +343,7 @@ const generateQuestion = asyncHandler(async (req, res) => {
 
 export default {
 	getResponse,
+	getMyActivity,
 	generateQuestion,
+	saveQuizAttempt,
 };

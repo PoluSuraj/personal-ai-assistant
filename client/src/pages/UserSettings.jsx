@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Flex,
   Box,
@@ -35,7 +35,7 @@ import {
 } from "@chakra-ui/react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, login } from "../store/authSlice.js";
-import { FaHistory, FaUserEdit, FaSignOutAlt, FaCog, FaBell, FaLock, FaBrain, FaFire, FaGraduationCap, FaChartLine, FaCamera } from "react-icons/fa";
+import { FaUserEdit, FaSignOutAlt, FaCog, FaBell, FaLock, FaBrain, FaFire, FaGraduationCap, FaChartLine, FaCamera } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, apiFetch, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 
@@ -58,6 +58,10 @@ function UserSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+  const [activityHistory, setActivityHistory] = useState([]);
+  const [activityCursor, setActivityCursor] = useState(null);
+  const [activityHasMore, setActivityHasMore] = useState(false);
+  const [activityLoading, setActivityLoading] = useState(false);
   const fileInputRef = useRef(null);
 
   const bg = useColorModeValue("gray.50", "gray.950");
@@ -69,7 +73,6 @@ function UserSettings() {
   const editableBg = useColorModeValue("white", "gray.700");
   const readOnlyBg = useColorModeValue("gray.50", "whiteAlpha.100");
   const historyBg = useColorModeValue("gray.50", "whiteAlpha.100");
-  const historyHoverBg = useColorModeValue("teal.50", "whiteAlpha.200");
   const heroGradient = useColorModeValue("linear(to-br, teal.500, brand.600, accent.500)", "linear(to-br, teal.700, brand.800, accent.700)");
   const statBg = useColorModeValue("whiteAlpha.900", "blackAlpha.200");
   const avatarButtonBg = useColorModeValue("white", "gray.800");
@@ -90,6 +93,27 @@ function UserSettings() {
       });
     }
   }, [user]);
+
+  const loadActivityHistory = useCallback(async (cursor = null) => {
+    setActivityLoading(true);
+    try {
+      const query = new URLSearchParams({ limit: "50" });
+      if (cursor) query.set("cursor", cursor);
+      const result = await apiFetch(`/api/v1/chat/activity/mine?${query.toString()}`);
+      const page = result.data || {};
+      setActivityHistory((previous) => cursor ? [...previous, ...(page.items || [])] : (page.items || []));
+      setActivityCursor(page.nextCursor || null);
+      setActivityHasMore(Boolean(page.hasMore));
+    } catch (error) {
+      toast({ title: "Could not load saved history", description: error.message, status: "error", duration: 4000, isClosable: true });
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (user?.email) loadActivityHistory();
+  }, [loadActivityHistory, user?.email]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -344,21 +368,43 @@ function UserSettings() {
                     </SimpleGrid>
                   </TabPanel>
                   <TabPanel>
-                    {history.length > 0 ? (
-                      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                        {history.map((item, i) => (
-                          <Flex key={`${item}-${i}`} p={4} bg={historyBg} borderRadius="xl" align="center" gap={4} _hover={{ bg: historyHoverBg, transform: "translateY(-3px)" }} transition="all 0.2s" cursor="pointer" borderWidth="1px" borderColor={borderColor}>
-                            <Box p={3} bg="teal.100" borderRadius="full" color="teal.700"><FaHistory /></Box>
-                            <VStack align="start" spacing={0}><Text color={textColor} fontWeight="semibold">{item}</Text><Text fontSize="xs" color={mutedColor}>Ready for quiz and resources</Text></VStack>
+                    <VStack align="stretch" spacing={4}>
+                      <Text color={mutedColor}>Your saved chat, voice, and quiz activity is linked to this account. Authorized administrators can review the same records.</Text>
+                      {activityHistory.length ? activityHistory.map((activity) => (
+                        <Box key={activity._id} p={4} bg={historyBg} borderRadius="xl" borderWidth="1px" borderColor={borderColor}>
+                          <Flex justify="space-between" align="start" gap={3} flexWrap="wrap" mb={3}>
+                            <VStack align="start" spacing={1}>
+                              <Badge colorScheme={activity.kind === "quiz" ? "orange" : activity.kind === "voice" ? "purple" : "teal"}>{activity.kind === "quiz" ? "Quiz" : activity.kind === "voice" ? "Voice assistant" : "Chat"}</Badge>
+                              <Text fontWeight="semibold" color={textColor}>{activity.topic || activity.prompt || "Learning activity"}</Text>
+                            </VStack>
+                            <Text fontSize="xs" color={mutedColor}>{new Date(activity.createdAt).toLocaleString()}</Text>
                           </Flex>
-                        ))}
-                      </SimpleGrid>
-                    ) : (
-                      <Flex direction="column" align="center" justify="center" h="300px" color={mutedColor} bg={historyBg} borderRadius="xl" textAlign="center" px={6}>
-                        <Heading size="md" mb={2}>No History Found</Heading>
-                        <Text>Start a chat and your learning topics will become part of this profile.</Text>
-                      </Flex>
-                    )}
+                          {activity.kind === "quiz" ? (
+                            <VStack align="stretch" spacing={2}>
+                              <Text><strong>Score:</strong> {activity.score}/{activity.total} ({activity.percentage}%)</Text>
+                              {(activity.questions || []).map((question, index) => {
+                                const answer = activity.answers?.[index] ?? activity.answers?.[String(index)] ?? "";
+                                return <Box key={`${activity._id}-${index}`} borderTopWidth="1px" borderColor={borderColor} pt={2}>
+                                  <Text fontWeight="medium">Q{index + 1}. {question.question}</Text>
+                                  <Text fontSize="sm"><strong>Your answer:</strong> {answer ? `${answer}. ${question.options?.[answer] || ""}` : "Not answered"}</Text>
+                                  <Text fontSize="sm" color={mutedColor}><strong>Correct:</strong> {question.correct}. {question.options?.[question.correct] || ""}</Text>
+                                </Box>;
+                              })}
+                            </VStack>
+                          ) : (
+                            <VStack align="stretch" spacing={2}>
+                              <Text whiteSpace="pre-wrap"><strong>You:</strong> {activity.prompt}</Text>
+                              <Text whiteSpace="pre-wrap"><strong>Assistant:</strong> {activity.response}</Text>
+                            </VStack>
+                          )}
+                        </Box>
+                      )) : (
+                        <Flex direction="column" align="center" justify="center" minH="220px" color={mutedColor} bg={historyBg} borderRadius="xl" textAlign="center" px={6}>
+                          {activityLoading ? <Spinner /> : <><Heading size="md" mb={2}>No saved history yet</Heading><Text>New chats, voice sessions, and completed quizzes will appear here.</Text></>}
+                        </Flex>
+                      )}
+                      {activityHasMore ? <Button alignSelf="center" onClick={() => loadActivityHistory(activityCursor)} isLoading={activityLoading}>Load older activity</Button> : null}
+                    </VStack>
                   </TabPanel>
                   <TabPanel>
                     <VStack spacing={6} align="stretch" maxW="lg">

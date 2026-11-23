@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import { User } from "../models/user.models.js";
 import { accessTokenOptions, refreshTokenOptions } from "../constants.js"
-import { sendOtpMail } from "../utils/mailsender.js";
+import { sendAccountWelcomeMail, sendOtpMail } from "../utils/mailsender.js";
 import { sendResetMail } from "../utils/mailsender.js";
 import crypto from "crypto";
 import { OtpSchema } from "../models/otp.model.js";
@@ -13,8 +13,25 @@ import { getAdminEmails, isAdminUser } from "../middlewares/auth.middleware.js";
 import { createNotification } from "./notification.controller.js";
 import { Contact } from "../models/contact.model.js";
 import { Notification } from "../models/notification.model.js";
+import { Activity } from "../models/activity.model.js";
+import { Subscription } from "../models/subscription.model.js";
 
 const OTP_SKIP_WINDOW_MS = 60 * 60 * 1000;
+
+const makeTemporaryPassword = () => {
+    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowercase = "abcdefghijkmnopqrstuvwxyz";
+    const digits = "23456789";
+    const special = "@$!%*?&";
+    const all = uppercase + lowercase + digits + special;
+    const pick = (characters) => characters[crypto.randomInt(characters.length)];
+    const password = [pick(uppercase), pick(lowercase), pick(digits), pick(special), ...Array.from({ length: 16 }, () => pick(all))];
+    for (let index = password.length - 1; index > 0; index -= 1) {
+        const swapIndex = crypto.randomInt(index + 1);
+        [password[index], password[swapIndex]] = [password[swapIndex], password[index]];
+    }
+    return password.join("");
+};
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -128,6 +145,13 @@ const loginUser = asyncHandler(async (req, res) => {
 
     if (!isPasswordValid) {
         throw new ApiError(403, "Invalid credentials");
+    }
+
+    if (user.mustChangePassword) {
+        return res.status(200).json(new ApiResponse(200, {
+            email: user.email,
+            mustChangePassword: true,
+        }, "Change your temporary password to continue"));
     }
 
     const hasRecentOtpVerification = Boolean(
@@ -274,6 +298,30 @@ const changeUserPassword = asyncHandler(async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     return res.status(200).json(new ApiResponse(201, {}, "Password updated"));
+});
+
+const completeInitialPassword = asyncHandler(async (req, res) => {
+    const { email, currentPassword, newPassword, confirmPassword } = req.body;
+    if (!email || !currentPassword || !newPassword || !confirmPassword) {
+        throw new ApiError(400, "Email and all password fields are required");
+    }
+    if (newPassword !== confirmPassword) throw new ApiError(400, "New passwords do not match");
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(newPassword)) {
+        throw new ApiError(400, "Use at least 8 characters with uppercase, lowercase, a number, and a supported special character");
+    }
+
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() });
+    if (!user || !user.mustChangePassword) throw new ApiError(403, "This account does not require an initial password change");
+    if (!(await user.isPasswordCorrect(currentPassword))) throw new ApiError(403, "Temporary password is incorrect");
+    if (currentPassword === newPassword) throw new ApiError(400, "Choose a password different from the temporary password");
+
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    user.refreshToken = undefined;
+    user.lastOtpVerifiedAt = undefined;
+    await user.save();
+
+    return res.status(200).json(new ApiResponse(200, { email: user.email }, "Password updated. Sign in with your new password."));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
@@ -609,33 +657,126 @@ const getManagedUserDetails = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email }).select("-password -refreshToken");
     if (!user) throw new ApiError(404, "User not found");
 
-    const [notifications, contacts] = await Promise.all([
-        Notification.find({ recipientEmail: email }).sort({ createdAt: -1 }).limit(12).lean(),
-        Contact.find({ email }).sort({ createdAt: -1 }).limit(12).lean(),
+    const [notifications, contacts, activities, activityCounts, notificationCount, unreadNotificationCount, contactCount, repliedContactCount, subscription] = await Promise.all([
+        Notification.find({ recipientEmail: email }).sort({ createdAt: -1 }).limit(100).lean(),
+        Contact.find({ email }).sort({ createdAt: -1 }).limit(100).lean(),
+        Activity.find({ userId: user._id }).sort({ createdAt: -1, _id: -1 }).limit(101).lean(),
+        Activity.aggregate([
+            { $match: { userId: user._id } },
+            { $group: { _id: "$kind", count: { $sum: 1 } } },
+        ]),
+        Notification.countDocuments({ recipientEmail: email }),
+        Notification.countDocuments({ recipientEmail: email, status: { $ne: "read" } }),
+        Contact.countDocuments({ email }),
+        Contact.countDocuments({ email, status: "replied" }),
+        Subscription.findOne({ email }).select("isActive subscribedAt createdAt updatedAt").lean(),
     ]);
+    const counts = Object.fromEntries(activityCounts.map(({ _id, count }) => [_id, count]));
+    const activitiesHaveMore = activities.length > 100;
+    const visibleActivities = activities.slice(0, 100);
+    const lastVisibleActivity = visibleActivities.at(-1);
 
     return res.status(200).json(new ApiResponse(200, {
         user: { ...user.toObject(), isAdmin: isAdminUser(user) },
         notifications,
         contacts,
+        activities: visibleActivities,
+        activitiesHaveMore,
+        activitiesNextCursor: activitiesHaveMore && lastVisibleActivity
+            ? JSON.stringify({ createdAt: lastVisibleActivity.createdAt, id: lastVisibleActivity._id })
+            : null,
+        subscription,
         stats: {
-            notifications: notifications.length,
-            unreadNotifications: notifications.filter((item) => item.status !== "read").length,
-            contactMessages: contacts.length,
-            repliedContacts: contacts.filter((item) => item.status === "replied").length,
+            notifications: notificationCount,
+            unreadNotifications: unreadNotificationCount,
+            contactMessages: contactCount,
+            repliedContacts: repliedContactCount,
+            chats: counts.chat || 0,
+            voiceSessions: counts.voice || 0,
+            quizzes: counts.quiz || 0,
+            subscription: subscription ? (subscription.isActive ? "active" : "unsubscribed") : "not subscribed",
         },
         availability: {
-            chatHistory: false,
-            note: "Chat history is not persisted to the backend yet, so admins can only inspect stored account, contact, and notification data.",
+            chatHistory: true,
+            note: "Recent chat and voice transcripts, quiz answers, scores, contacts, and notifications are stored for the account and visible to authorized administrators. Passwords and authentication tokens are never included.",
         },
     }, "User details loaded"));
 });
 
+const getManagedUserActivities = asyncHandler(async (req, res) => {
+    const email = decodeURIComponent(req.params.email || "").trim().toLowerCase();
+    if (!email) throw new ApiError(400, "User email is required");
+    const user = await User.findOne({ email }).select("_id");
+    if (!user) throw new ApiError(404, "User not found");
+
+    const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 100);
+    const filter = { userId: user._id };
+    if (req.query.cursor) {
+        let cursor;
+        try {
+            cursor = JSON.parse(req.query.cursor);
+        } catch {
+            throw new ApiError(400, "Invalid activity cursor");
+        }
+        const cursorDate = new Date(cursor.createdAt);
+        if (!Number.isFinite(cursorDate.getTime()) || !/^[a-f\\d]{24}$/i.test(cursor.id || "")) {
+            throw new ApiError(400, "Invalid activity cursor");
+        }
+        filter.$or = [
+            { createdAt: { $lt: cursorDate } },
+            { createdAt: cursorDate, _id: { $lt: cursor.id } },
+        ];
+    }
+    const records = await Activity.find(filter).sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean();
+    const hasMore = records.length > limit;
+    const items = records.slice(0, limit);
+    const last = items.at(-1);
+    return res.status(200).json(new ApiResponse(200, {
+        items,
+        hasMore,
+        nextCursor: hasMore && last ? JSON.stringify({ createdAt: last.createdAt, id: last._id }) : null,
+    }, "User activity loaded"));
+});
+
+const updateManagedUser = asyncHandler(async (req, res) => {
+    const email = decodeURIComponent(req.params.email || "").trim().toLowerCase();
+    const { name, username, bio, preferences } = req.body;
+    if (!email) throw new ApiError(400, "User email is required");
+
+    const user = await User.findOne({ email });
+    if (!user) throw new ApiError(404, "User not found");
+    if (name !== undefined) {
+        const normalizedName = String(name).trim();
+        if (!normalizedName || normalizedName.length > 100) throw new ApiError(400, "Name must be between 1 and 100 characters");
+        user.name = normalizedName;
+    }
+    if (username !== undefined) {
+        const normalizedUsername = String(username).trim().toLowerCase();
+        if (normalizedUsername && !/^[a-z0-9_.-]{3,30}$/.test(normalizedUsername)) {
+            throw new ApiError(400, "Username must be 3-30 characters using letters, numbers, dots, underscores, or hyphens");
+        }
+        user.username = normalizedUsername || undefined;
+    }
+    if (bio !== undefined) {
+        if (String(bio).length > 500) throw new ApiError(400, "Bio must be 500 characters or fewer");
+        user.bio = String(bio).trim();
+    }
+    if (preferences && typeof preferences === "object") {
+        for (const key of ["emailNotifications", "adaptivePractice"]) {
+            if (typeof preferences[key] === "boolean") user.preferences[key] = preferences[key];
+        }
+    }
+    await user.save();
+    const safeUser = await User.findById(user._id).select("name email username bio avatar preferences isAdmin isEmailVerified createdAt updatedAt");
+    return res.status(200).json(new ApiResponse(200, { ...safeUser.toObject(), isAdmin: isAdminUser(safeUser) }, "User profile updated"));
+});
+
 const createUserManually = asyncHandler(async (req, res) => {
-    const { name, email, password, isAdmin = false } = req.body;
-    if (!name || !email || !password) throw new ApiError(400, "Name, email, and password are required");
+    const { name, email, isAdmin = false } = req.body;
+    if (!name || !email) throw new ApiError(400, "Name and email are required");
 
     const normalizedEmail = String(email).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) throw new ApiError(400, "Enter a valid email address");
     if (isDemoMode()) {
         return res.status(201).json(new ApiResponse(201, { name, email: normalizedEmail, isAdmin }, "Demo user created"));
     }
@@ -643,13 +784,24 @@ const createUserManually = asyncHandler(async (req, res) => {
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(400, "User already exists");
 
+    const temporaryPassword = makeTemporaryPassword();
     const user = await User.create({
         name,
         email: normalizedEmail,
-        password,
+        password: temporaryPassword,
+        mustChangePassword: true,
         isEmailVerified: true,
         isAdmin: Boolean(isAdmin),
     });
+
+    try {
+        const delivery = await sendAccountWelcomeMail(user.email, user.name, temporaryPassword, user.isAdmin);
+        if (!delivery.sent) throw new Error("Email delivery is not configured");
+    } catch (error) {
+        await user.deleteOne();
+        console.error("Could not deliver account setup email:", error.message);
+        throw new ApiError(503, "User was not created because the setup email could not be sent. Check the mail configuration and try again.");
+    }
 
     await createNotification({
         title: "Welcome to Personal AI Assistant",
@@ -690,6 +842,7 @@ export default {
     loginWithGoogle,
     logoutUser,
     changeUserPassword,
+    completeInitialPassword,
     getCurrentUser,
     updateAvatar,
     removeAvatar,
@@ -702,6 +855,8 @@ export default {
     revokeAdminAccess,
     listUsers,
     getManagedUserDetails,
+    getManagedUserActivities,
+    updateManagedUser,
     createUserManually,
     removeUserManually
 }

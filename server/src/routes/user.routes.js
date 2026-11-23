@@ -9,6 +9,7 @@ router.route("/register").post(userController.registerUser);
 router.route("/login").post(userController.loginUser);
 router.route("/logout").post(verifyJWT, userController.logoutUser);
 router.route("/changePassword").post(verifyJWT, userController.changeUserPassword);
+router.route("/complete-initial-password").post(userController.completeInitialPassword);
 router.route("/getCurrentUser").get(verifyJWT, userController.getCurrentUser);
 router.route("/updateAvatar").post(verifyJWT, upload.single("avatar"), userController.updateAvatar);
 router.route("/removeAvatar").delete(verifyJWT, userController.removeAvatar);
@@ -23,6 +24,8 @@ router.route('/admins/grant').patch(verifyJWT, requireAdmin, userController.gran
 router.route('/admins/revoke').patch(verifyJWT, requireAdmin, userController.revokeAdminAccess);
 router.route('/manage-users').get(verifyJWT, requireAdmin, userController.listUsers);
 router.route('/manage-users/:email').get(verifyJWT, requireAdmin, userController.getManagedUserDetails);
+router.route('/manage-users/:email/activities').get(verifyJWT, requireAdmin, userController.getManagedUserActivities);
+router.route('/manage-users/:email').patch(verifyJWT, requireAdmin, userController.updateManagedUser);
 router.route('/manage-users').post(verifyJWT, requireAdmin, userController.createUserManually);
 router.route('/manage-users').delete(verifyJWT, requireAdmin, userController.removeUserManually);
 

@@ -30,6 +30,10 @@ const userSchema = new Schema(
             required: true,
             minlength: 8,
         },
+        mustChangePassword: {
+            type: Boolean,
+            default: false,
+        },
         avatar: {
             type: String,
         },

@@ -17,6 +17,8 @@ import {
   Tooltip,
   Select,
   Badge,
+  Alert,
+  AlertIcon,
 } from "@chakra-ui/react";
 import { FaMicrophone, FaMicrophoneSlash, FaPaperPlane, FaTrash, FaRobot, FaLightbulb, FaVolumeUp, FaVolumeMute, FaGlobe } from "react-icons/fa";
 import { addTopic, deleteTopic } from "../store/chatTopicSlice";
@@ -181,7 +183,7 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
     const matchingVoice = getSpeechVoice();
     if (matchingVoice) utterance.voice = matchingVoice;
     window.speechSynthesis.speak(utterance);
-  }, [availableVoices, selectedLanguage, speechSynthesisSupported, voiceReplies]);
+  }, [getSpeechVoice, selectedLanguage, speechSynthesisSupported, voiceReplies]);
 
   const handleSendMessage = useCallback(async (messageText = input) => {
     const trimmedInput = messageText.trim();
@@ -197,6 +199,8 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
         method: "POST",
         body: JSON.stringify({
           question: `Reply in a clear, helpful way. If the user wrote in ${selectedLanguage}, respond naturally for that language when appropriate: ${trimmedInput}`,
+          activityQuestion: trimmedInput,
+          activityChannel: voiceMode ? "voice" : "chat",
         }),
       });
 
@@ -221,7 +225,7 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
     } finally {
       setBotTyping(false);
     }
-  }, [botTyping, dispatch, input, navigate, selectedLanguage, speakText, toast]);
+  }, [botTyping, dispatch, input, navigate, selectedLanguage, speakText, toast, voiceMode]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -377,6 +381,10 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
               </Badge>
             ) : null}
           </HStack>
+          <Alert status="info" bg="blackAlpha.200" color="white" borderRadius="lg" py={2} zIndex={1}>
+            <AlertIcon color="white" />
+            <Text fontSize="xs">Messages and voice transcripts are saved to your account and may be reviewed by authorized administrators for support.</Text>
+          </Alert>
         </Flex>
       </Box>
 

@@ -30,6 +30,7 @@ import Notifications from './pages/Notifications.jsx'
 import AdminNotifications from './pages/AdminNotifications.jsx'
 import AdminUsers from './pages/AdminUsers.jsx'
 import OtpVerification from './components/OtpVerification.jsx'
+import InitialPasswordChange from './components/InitialPasswordChange.jsx'
 import theme from './theme.js'
 
 const router = createBrowserRouter([
@@ -131,6 +132,10 @@ const router = createBrowserRouter([
       {
         path: '/otpVerification/:email',
         element: <OtpVerification />,
+      },
+      {
+        path: '/change-initial-password',
+        element: <InitialPasswordChange />,
       },
     ],
   },

@@ -110,6 +110,11 @@ function LoginSignup() {
         return;
       }
 
+      if (data.data?.mustChangePassword) {
+        navigate("/change-initial-password", { replace: true, state: { email: data.data.email || formData.email } });
+        return;
+      }
+
       if (data.data?.accessToken) {
         setStoredAccessToken(data.data.accessToken);
         dispatch(authLogin(data.data));
