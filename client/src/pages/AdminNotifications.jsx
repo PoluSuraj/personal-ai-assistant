@@ -208,7 +208,7 @@ export default function AdminNotifications() {
                   <Box>
                     <Badge colorScheme={notification.status === "unread" ? "red" : "green"} mb={2}>{notification.status}</Badge>
                     <Heading size="sm" mb={2}>{notification.title}</Heading>
-                    <Text mb={2}>{notification.message}</Text>
+                    <Text mb={2} whiteSpace="pre-wrap" overflowWrap="anywhere">{notification.message}</Text>
                     <Text fontSize="sm" color={muted}>
                       {new Date(notification.createdAt).toLocaleString()}
                       {notification.createdByEmail ? ` • sent by ${notification.createdByEmail}` : ""}

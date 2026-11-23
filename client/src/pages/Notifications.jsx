@@ -70,7 +70,7 @@ export default function Notifications() {
                   <Box>
                     <Badge colorScheme={notification.status === "unread" ? "red" : "green"} mb={2}>{notification.status}</Badge>
                     <Heading size="sm" mb={2}>{notification.title}</Heading>
-                    <Text mb={2}>{notification.message}</Text>
+                    <Text mb={2} whiteSpace="pre-wrap" overflowWrap="anywhere">{notification.message}</Text>
                     <Text fontSize="sm" color={muted}>{new Date(notification.createdAt).toLocaleString()}</Text>
                   </Box>
                   <HStack alignSelf={{ base: "stretch", md: "center" }}>
