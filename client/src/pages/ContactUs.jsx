@@ -15,8 +15,9 @@ import {
   Flex,
   HStack,
   Icon,
+  Link,
 } from '@chakra-ui/react';
-import { FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaEnvelope } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { ArrowBackIcon } from '@chakra-ui/icons';
 import { API_BASE_URL } from "../utils/api";
@@ -107,7 +108,7 @@ export default function ContactUs() {
     }
   };
 
-  const ContactInfoCard = ({ icon, title, description }) => (
+  const ContactInfoCard = ({ icon, title, description, href }) => (
     <VStack
       bg={useColorModeValue('rgba(255, 255, 255, 0.8)', 'rgba(26, 32, 44, 0.8)')}
       backdropFilter="blur(20px)"
@@ -129,9 +130,11 @@ export default function ContactUs() {
         </Box>
         <Heading size="sm">{title}</Heading>
       </HStack>
-      <Text color="gray.500" fontSize="sm">
-        {description}
-      </Text>
+      {href ? (
+        <Link href={href} color="gray.500" fontSize="sm" textDecoration="underline" textUnderlineOffset="3px">
+          {description}
+        </Link>
+      ) : <Text color="gray.500" fontSize="sm">{description}</Text>}
     </VStack>
   );
 
@@ -185,12 +188,8 @@ export default function ContactUs() {
             <ContactInfoCard
               icon={FaEnvelope}
               title="Email"
-              description="21a91a0547@gmail.com"
-            />
-            <ContactInfoCard
-              icon={FaMapMarkerAlt}
-              title="Address"
-              description="Aditya University, ADB Road, East Godavari, 533437 (AP State), India"
+              description="Send email"
+              href="mailto:21a91a0547@gmail.com"
             />
 
             {/* Additional Info */}
