@@ -184,7 +184,7 @@ export default function VidyaVritta() {
                   const isActive = index === activeIndex;
                   const isSaved = savedIds.includes(videoId);
                   const isLiked = likedIds.includes(videoId);
-                  const playerUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=1&controls=1&playsinline=1&rel=0&modestbranding=1`;
+                  const playerUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=0&controls=1&playsinline=1&rel=0&modestbranding=1`;
 
                   return (
                     <Flex key={videoId} h="full" minH="full" w="full" scrollSnapAlign="start" justify="center" align="stretch" py={0}>
