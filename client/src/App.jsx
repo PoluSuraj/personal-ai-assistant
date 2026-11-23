@@ -5,16 +5,24 @@ import { login } from './store/authSlice';
 import { Flex, Spinner, Text, VStack } from '@chakra-ui/react';
 import ErrorBoundary from './components/ErrorBoundary';
 import { apiFetch, clearStoredAccessToken } from "./utils/api";
+import { activateDeviceSession, getDeviceProfile, hasDeviceSession, isDeviceStorageEnabled } from "./utils/deviceStorage";
 
 function App() {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchCurrent = useCallback(async () => {
+    const cachedProfile = isDeviceStorageEnabled() ? getDeviceProfileFromTokenlessCache() : null;
+    if (cachedProfile && hasDeviceSession(cachedProfile.email)) {
+      dispatch(login(cachedProfile));
+      setIsLoading(false);
+      return;
+    }
     try {
       const data = await apiFetch('/api/v1/users/getCurrentUser', {
         method: 'GET',
       });
+      if (isDeviceStorageEnabled()) activateDeviceSession(data.data);
       dispatch(login(data.data));
     } catch (error) {
       clearStoredAccessToken();
@@ -44,6 +52,11 @@ function App() {
       <Outlet />
     </ErrorBoundary>
   );
+}
+
+function getDeviceProfileFromTokenlessCache() {
+  const profileIndex = window.localStorage.getItem("paa_device_last_email");
+  return profileIndex ? getDeviceProfile(profileIndex) : null;
 }
 
 export default App;

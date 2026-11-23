@@ -73,7 +73,7 @@ app.get("/api/v1/health", (req, res) => {
             ai: process.env.GROQ_API_KEY && process.env.AI_API_URL ? "configured" : "fallback",
             aiModel,
             youtube: process.env.YOUTUBE_API_KEY ? "configured" : "fallback",
-            email: process.env.MAIL_ID && process.env.MAIL_PASSWORD ? "configured" : "fallback",
+            email: process.env.BREVO_API_KEY || (process.env.MAIL_ID && process.env.MAIL_PASSWORD) ? "configured" : "fallback",
             cloudinary: process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET ? "configured" : "missing",
             auth: process.env.ACCESS_TOKEN_SECRET && process.env.REFRESH_TOKEN_SECRET ? "configured" : "fallback",
         },

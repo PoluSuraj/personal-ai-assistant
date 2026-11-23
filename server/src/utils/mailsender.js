@@ -228,4 +228,18 @@ const sendAccountWelcomeMail = async (to, name, temporaryPassword, isAdmin = fal
 	return { sent: Boolean(info), messageId: info?.messageId };
 };
 
-export { sendOtpMail, sendResetMail, sendContactMail, sendAccountWelcomeMail };
+const sendLearningMessageMail = async ({ to, name, subject, heading, message }) => {
+	const escapeHtml = (value) => String(value || "").replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+	const safeName = escapeHtml(name || "Learner");
+	const safeHeading = escapeHtml(heading);
+	const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
+	const info = await sendMail({
+		to,
+		subject,
+		textContent: `Hello ${name || "Learner"},\n\n${message}\n\nKeep learning, one step at a time.\nPersonal AI Assistant Team`,
+		htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#202938;max-width:600px;margin:auto"><div style="background:#172033;padding:24px;border-radius:12px 12px 0 0;color:#fff"><p style="margin:0;color:#8ce5d2;font-weight:bold">PERSONAL AI ASSISTANT</p><h1 style="margin:12px 0 0;font-size:24px">${safeHeading}</h1></div><div style="padding:24px;border:1px solid #e2e8f0;border-radius:0 0 12px 12px"><p>Hello ${safeName},</p><p>${safeMessage}</p><p>Keep learning, one step at a time.</p><p>Personal AI Assistant Team</p></div></div>`,
+	});
+	return { sent: Boolean(info), messageId: info?.messageId };
+};
+
+export { sendOtpMail, sendResetMail, sendContactMail, sendAccountWelcomeMail, sendLearningMessageMail };

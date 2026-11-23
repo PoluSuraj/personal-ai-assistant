@@ -25,6 +25,28 @@ const userSchema = new Schema(
             type: String,
             default: "",
         },
+        dateOfBirth: {
+            type: String,
+            default: "",
+            match: [/^$|^\d{4}-\d{2}-\d{2}$/, "Date of birth must use YYYY-MM-DD"],
+        },
+        institutionName: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 160,
+        },
+        institutionCountry: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 100,
+        },
+        institutionType: {
+            type: String,
+            enum: ["", "school", "college", "other"],
+            default: "",
+        },
         password: {
             type: String,
             required: true,
@@ -61,6 +83,10 @@ const userSchema = new Schema(
                 default: false,
             },
             adaptivePractice: {
+                type: Boolean,
+                default: true,
+            },
+            dailyMotivationEmails: {
                 type: Boolean,
                 default: true,
             },

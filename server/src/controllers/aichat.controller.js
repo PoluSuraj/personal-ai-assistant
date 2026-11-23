@@ -139,7 +139,7 @@ This is the question: "${question}"
 
 	if (!API_URL || !GROQ_API_KEY) {
 		const fallback = buildFallbackResponse(question);
-		await saveChatActivity(req, { prompt: question, response: fallback.ai_response, topic: fallback.topic });
+		if (req.body.saveActivity !== false) await saveChatActivity(req, { prompt: question, response: fallback.ai_response, topic: fallback.topic });
 		return res.status(200).json(new ApiResponse(200, fallback, "Fallback AI response"));
 	}
 
@@ -176,11 +176,11 @@ This is the question: "${question}"
 	} catch (error) {
 		console.error("AI API Error:", error.response?.status || error.statusCode || "unknown", error.response?.data?.error?.message || error.message);
 		const fallback = buildFallbackResponse(question);
-		await saveChatActivity(req, { prompt: question, response: fallback.ai_response, topic: fallback.topic });
+		if (req.body.saveActivity !== false) await saveChatActivity(req, { prompt: question, response: fallback.ai_response, topic: fallback.topic });
 		return res.status(200).json(new ApiResponse(200, fallback, "AI service temporarily unavailable; fallback response provided."));
 	}
 
-	await saveChatActivity(req, { prompt: question, response: ai_response.ai_response, topic: ai_response.topic });
+	if (req.body.saveActivity !== false) await saveChatActivity(req, { prompt: question, response: ai_response.ai_response, topic: ai_response.topic });
 	// console.log(question,aiResponse)
 	return res
 		.status(200)

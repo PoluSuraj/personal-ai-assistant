@@ -36,6 +36,8 @@ import { logout } from '../store/authSlice';
 import BackendStatus from './BackendStatus';
 import { API_BASE_URL, clearStoredAccessToken, getStoredAccessToken } from "../utils/api";
 import useNotificationCounts from '../hooks/useNotificationCounts';
+import InstallAppButton from './InstallAppButton';
+import { clearDeviceSession, isDeviceStorageEnabled } from '../utils/deviceStorage';
 
 const navItems = [
   { label: 'Home', to: '/dashboard', icon: FaHome },
@@ -62,6 +64,13 @@ export default function Navbar() {
   const menuBg = useColorModeValue('white', 'gray.800');
 
   const handleLogout = async () => {
+    if (isDeviceStorageEnabled()) {
+      clearDeviceSession(user?.email);
+      clearStoredAccessToken();
+      dispatch(logout());
+      navigate('/authentication/login');
+      return;
+    }
     try {
       const storedToken = getStoredAccessToken();
       const res = await fetch(`${API_BASE_URL}/api/v1/users/logout`, {
@@ -137,6 +146,7 @@ export default function Navbar() {
         </Flex>
 
         <Stack flex={{ base: 1, md: 0 }} justify="flex-end" direction="row" spacing={4} alignItems="center">
+          <InstallAppButton size="xs" />
           {user ? <BackendStatus compact={false} adminView={isAdmin} /> : null}
           <IconButton size="md" icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />} aria-label="Toggle Color Mode" onClick={toggleColorMode} variant="ghost" rounded="full" />
           {user ? (

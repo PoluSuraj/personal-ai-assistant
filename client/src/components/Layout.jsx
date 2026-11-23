@@ -45,9 +45,7 @@ const Layout = () => {
                 }}
                 pointerEvents="none"
             />
-            <Box display={{ base: 'none', md: 'block' }} zIndex={20} flexShrink={0}>
-                <Sidebar />
-            </Box>
+            <Sidebar />
             <Flex flexDirection="column" flex="1" overflow="hidden" position="relative" zIndex={1} bg="transparent" minW={0} h="100dvh">
                 <Navbar />
                 <Box
@@ -64,7 +62,7 @@ const Layout = () => {
                     }}
                 >
                     <Box minH="calc(100dvh - 60px)" display="flex" flexDirection="column">
-                        <Box flex="1 0 auto">
+                        <Box flex="1 0 auto" pb={{ base: "76px", md: 0 }}>
                             <Outlet />
                         </Box>
                         <Footer />

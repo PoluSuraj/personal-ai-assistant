@@ -18,6 +18,7 @@ import {
 import { FaArrowRight, FaBrain, FaCertificate, FaShieldAlt, FaUserGraduate } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import InstallAppButton from "../components/InstallAppButton";
 
 const highlights = [
   {
@@ -171,6 +172,7 @@ export default function Welcome() {
                   <Button variant="ghost" size="sm" onClick={() => navigate(user ? "/voice-assistant" : "/authentication/login")}>
                     Voice assistant
                   </Button>
+                  <InstallAppButton size="sm" variant="ghost" />
                 </HStack>
               </Box>
 

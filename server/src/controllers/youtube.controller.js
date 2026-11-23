@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import axios from "axios";
 
 const searchVideos = asyncHandler(async (req, res) => {
-    const { query } = req.query;
+    const { query, format } = req.query;
 
     console.log(`YouTube search query: ${query}`);
 
@@ -13,6 +13,15 @@ const searchVideos = asyncHandler(async (req, res) => {
 
     const API_KEY = process.env.YOUTUBE_API_KEY;
     const BASE_URL = "https://www.googleapis.com/youtube/v3/search";
+
+    if (!API_KEY && format === "study-short") {
+        return res.status(200).json({
+            success: true,
+            data: [],
+            fallback: true,
+            message: "Short learning videos are unavailable until YouTube search is configured.",
+        });
+    }
 
     if (!API_KEY) {
         const fallbackVideos = [
@@ -27,8 +36,9 @@ const searchVideos = asyncHandler(async (req, res) => {
         const response = await axios.get(BASE_URL, {
             params: {
                 part: "snippet",
-                q: query,
+                q: format === "study-short" ? `${query} learning lesson short` : query,
                 type: "video",
+                ...(format === "study-short" ? { videoCategoryId: "27", videoDuration: "short" } : {}),
                 maxResults: 6,
                 key: API_KEY
             }
@@ -48,5 +58,5 @@ const searchVideos = asyncHandler(async (req, res) => {
 });
 
 export default {
-    searchVideos
+    searchVideos,
 };

@@ -1,3 +1,5 @@
+import { getDeviceActivities, getDeviceProfile, hasDeviceSession, isDeviceStorageEnabled, saveDeviceActivity, saveDeviceProfile } from "./deviceStorage";
+
 const runtimeOrigin = typeof window !== "undefined" ? window.location.origin : "";
 const runtimeHostname = typeof window !== "undefined" ? window.location.hostname : "";
 const ACCESS_TOKEN_STORAGE_KEY = "personal_ai_access_token";
@@ -55,10 +57,55 @@ export function isUnauthorizedError(error) {
 }
 
 export async function apiFetch(path, options = {}) {
+  const localMode = isDeviceStorageEnabled();
+  const method = String(options.method || "GET").toUpperCase();
+  const requestBody = options.body && typeof options.body === "string" ? JSON.parse(options.body) : (options.body || {});
+  const cachedEmail = getDeviceProfile(window.localStorage.getItem("paa_device_last_email"))?.email;
+  const currentEmail = cachedEmail && hasDeviceSession(cachedEmail) ? cachedEmail : "";
+
+  if (localMode && currentEmail && method === "GET" && path.startsWith("/api/v1/users/getCurrentUser")) {
+    return { data: getDeviceProfile(currentEmail), message: "Loaded from this device" };
+  }
+  if (localMode && currentEmail && method === "PATCH" && path.startsWith("/api/v1/users/update-account")) {
+    const profile = saveDeviceProfile({ ...getDeviceProfile(currentEmail), ...requestBody, preferences: { ...getDeviceProfile(currentEmail)?.preferences, ...requestBody.preferences } });
+    return { data: profile, message: "Saved on this device" };
+  }
+  if (localMode && currentEmail && method === "DELETE" && path.startsWith("/api/v1/users/removeAvatar")) {
+    const profile = saveDeviceProfile({ ...getDeviceProfile(currentEmail), avatar: "" });
+    return { data: profile, message: "Profile photo removed from this device" };
+  }
+  if (localMode && currentEmail && method === "GET" && path.startsWith("/api/v1/chat/activity/mine")) {
+    const [, queryString = ""] = path.split("?");
+    const query = new URLSearchParams(queryString);
+    const limit = Math.max(1, Math.min(Number(query.get("limit") || 20), 100));
+    const records = getDeviceActivities(currentEmail);
+    const cursorValue = query.get("cursor");
+    const cursor = cursorValue ? JSON.parse(cursorValue) : null;
+    const filtered = cursor ? records.filter((item) => new Date(item.createdAt) < new Date(cursor.createdAt)) : records;
+    const items = filtered.slice(0, limit);
+    const last = items.at(-1);
+    return { data: { items, hasMore: filtered.length > limit, nextCursor: filtered.length > limit && last ? JSON.stringify({ createdAt: last.createdAt, id: last._id }) : null }, message: "Device history loaded" };
+  }
+  if (localMode && currentEmail && method === "POST" && path.startsWith("/api/v1/chat/activity/quiz")) {
+    const questions = requestBody.questions || [];
+    const answers = requestBody.answers || {};
+    const score = questions.reduce((total, question, index) => total + (answers[index] === question.correct ? 1 : 0), 0);
+    saveDeviceActivity(currentEmail, { ...requestBody, kind: "quiz", score, total: questions.length, percentage: questions.length ? Math.round((score / questions.length) * 100) : 0 });
+    return { data: { savedLocally: true }, message: "Quiz result saved on this device" };
+  }
+
   const accessToken = getStoredAccessToken();
+  let fetchOptions = options;
+  if (localMode && currentEmail && method === "POST" && path.startsWith("/api/v1/chat/getResponse")) {
+    const onlineBody = { ...requestBody };
+    delete onlineBody.activityQuestion;
+    delete onlineBody.activityChannel;
+    onlineBody.saveActivity = false;
+    fetchOptions = { ...options, body: JSON.stringify(onlineBody) };
+  }
   const response = await fetch(apiUrl(path), {
     credentials: "include",
-    ...options,
+    ...fetchOptions,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -82,6 +129,18 @@ export async function apiFetch(path, options = {}) {
     error.data = data;
     throw error;
   }
+
+  if (localMode && currentEmail && method === "POST" && path.startsWith("/api/v1/chat/getResponse")) {
+    const answer = data?.data || {};
+    saveDeviceActivity(currentEmail, {
+      kind: requestBody.activityChannel === "voice" ? "voice" : "chat",
+      prompt: requestBody.activityQuestion || requestBody.question,
+      response: answer.ai_response || "",
+      topic: answer.topic || "",
+    });
+  }
+
+  if (localMode && data?.data?.email) saveDeviceProfile(data.data);
 
   return data;
 }

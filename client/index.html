@@ -3,11 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101827" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Personal AI" />
     <title>Personal AI Assistant</title>
   </head>
   <body>
     <div id="root"></div>
+    <main id="file-mode-notice" hidden>
+      <style>
+        #file-mode-notice {
+          box-sizing: border-box;
+          min-height: 100vh;
+          padding: 32px 20px;
+          display: grid;
+          place-items: center;
+          background: #101827;
+          color: #f8fafc;
+          font-family: system-ui, sans-serif;
+          text-align: center;
+        }
+        #file-mode-notice[hidden] { display: none; }
+        #file-mode-notice section { max-width: 560px; }
+        #file-mode-notice h1 { margin: 0 0 12px; font-size: 30px; }
+        #file-mode-notice p { color: #cbd5e1; line-height: 1.6; }
+        #file-mode-notice a { color: #8ce5d2; font-weight: 700; }
+      </style>
+      <section>
+        <h1>Open Personal AI Assistant online</h1>
+        <p>This app needs a secure website address to start and install. Opening this HTML file directly will not run the app.</p>
+        <p>Open the app at <a href="https://personal-ai-assistant-sepia.vercel.app/">personal-ai-assistant-sepia.vercel.app</a>, then choose <strong>Install app</strong> in your browser.</p>
+      </section>
+    </main>
+    <script>
+      if (window.location.protocol === "file:") {
+        document.getElementById("root").hidden = true;
+        document.getElementById("file-mode-notice").hidden = false;
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

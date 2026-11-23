@@ -10,6 +10,7 @@ process.env.REFRESH_TOKEN_EXPIRY ||= '60d';
 import connectDb from './db/db1.js';
 import app from './app.js';
 import fs from 'fs';
+import { runDailyLearningMessages } from './utils/dailyLearningMessages.js';
 
 connectDb()
     .then(() => {
@@ -19,6 +20,10 @@ connectDb()
             console.log(`Server listening on port ${port} (${mode})`);
             fs.writeFileSync('server_startup.log', `Server started on port ${port} (${mode}) at ${new Date().toISOString()}
 `);
+            if (process.env.DEMO_MODE !== 'true') {
+                runDailyLearningMessages();
+                setInterval(runDailyLearningMessages, 5 * 60 * 1000).unref();
+            }
         });
 
         server.on('error', (err) => {

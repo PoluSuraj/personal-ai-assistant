@@ -50,6 +50,10 @@ const notificationSchema = new Schema(
             of: String,
             default: {},
         },
+        dedupeKey: {
+            type: String,
+            default: undefined,
+        },
         readAt: {
             type: Date,
             default: null,
@@ -57,5 +61,7 @@ const notificationSchema = new Schema(
     },
     { timestamps: true }
 );
+
+notificationSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 
 export const Notification = mongoose.model("Notification", notificationSchema);

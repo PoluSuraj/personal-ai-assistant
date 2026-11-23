@@ -17,6 +17,7 @@ import { useDispatch } from "react-redux";
 import { login as authLogin } from "../store/authSlice.js";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { API_BASE_URL, setStoredAccessToken } from "../utils/api";
+import { activateDeviceSession } from "../utils/deviceStorage";
 
 export default function OtpVerification() {
 	const { email } = useParams();
@@ -107,6 +108,7 @@ export default function OtpVerification() {
 					setStoredAccessToken(data.data.accessToken);
 				}
 				const { ...userData } = data.data || {};
+				activateDeviceSession(userData);
 				dispatch(authLogin(userData));
 				navigate("/dashboard");
 			} else {
@@ -229,10 +231,10 @@ export default function OtpVerification() {
 
 				{/* Premium Glass/Card Form Container */}
 				<VStack
-					w="calc(100% - 32px)"
+				w="full"
 					maxW="md"
-					p={{ base: 6, sm: 8, md: 10 }}
-					spacing={8}
+				p={{ base: 4, sm: 7, md: 10 }}
+				spacing={{ base: 5, md: 8 }}
 					bg={formBg}
 					backdropFilter="blur(20px)"
 					borderRadius="3xl"
@@ -252,11 +254,11 @@ export default function OtpVerification() {
 						>
 							Secure Access
 						</Text>
-						<Heading fontSize="3xl" fontWeight="900" letterSpacing="tight">
+						<Heading fontSize={{ base: "2xl", sm: "3xl" }} fontWeight="900" letterSpacing="tight" lineHeight="1.15">
 							OTP Verification
 						</Heading>
-						<Text color="gray.500" fontSize="md">
-							Enter the OTP sent to <strong>{email}</strong>
+						<Text color="gray.500" fontSize={{ base: "sm", sm: "md" }} lineHeight="1.5" wordBreak="break-word">
+							Enter the OTP sent to <strong style={{ overflowWrap: "anywhere" }}>{email}</strong>
 						</Text>
 						{devOtp && (
 							<HStack bg="green.50" color="green.800" border="1px solid" borderColor="green.100" borderRadius="lg" p={3} w="full" justify="space-between">
@@ -286,7 +288,7 @@ export default function OtpVerification() {
 
 					{/* OTP Input Fields */}
 					<VStack spacing={6} w="full">
-						<HStack spacing={{ base: 2, sm: 3 }} justify="center" w="full" flexWrap="wrap">
+						<HStack spacing={{ base: 1, sm: 3 }} justify="center" w="full" flexWrap="nowrap">
 							{otp.map((value, index) => (
 								<Input
 									key={index}
@@ -297,9 +299,10 @@ export default function OtpVerification() {
 									textAlign="center"
 									fontSize="2xl"
 									fontWeight="bold"
-									w={{ base: "42px", sm: "50px" }}
+									w={{ base: "clamp(30px, 9.5vw, 38px)", sm: "50px" }}
+									minW={0}
 									h={{ base: "52px", sm: "60px" }}
-									borderRadius="xl"
+									borderRadius={{ base: "lg", sm: "xl" }}
 									bg={inputBg}
 									border="2px solid"
 									borderColor={inputBorder}

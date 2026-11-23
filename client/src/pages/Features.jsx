@@ -12,7 +12,7 @@ import {
   VStack,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FaCertificate, FaComments, FaMicrophoneAlt, FaClipboardList, FaWikipediaW, FaYoutube } from 'react-icons/fa';
+import { FaCertificate, FaComments, FaMicrophoneAlt, FaClipboardList, FaWikipediaW, FaYoutube, FaFilm } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 export default function Features() {
@@ -27,6 +27,7 @@ export default function Features() {
     { label: 'Voice Assistant', icon: FaMicrophoneAlt, to: '/voice-assistant', description: 'Speak naturally in your language and get fast help without typing every question.', color: 'teal.500' },
     { label: 'Knowledge Base', icon: FaWikipediaW, to: '/wikipedia-search', description: 'Search quick summaries, topic explainers, and research-friendly reference material.', color: 'blue.500' },
     { label: 'YouTube Learning', icon: FaYoutube, to: '/youtube-recommendation', description: 'Open curated learning videos for the exact topic you are studying.', color: 'red.500' },
+    { label: 'VidyaVritta', icon: FaFilm, to: '/vidya-vritta', description: 'Swipe through short lessons selected from YouTube’s Education category.', color: 'teal.500' },
     { label: 'Protected Quiz', icon: FaClipboardList, to: '/quiz', description: 'Generate topic-based quizzes, stay inside the assessment flow, and submit with confidence.', color: 'orange.500' },
     { label: 'Certificates', icon: FaCertificate, to: '/quiz', description: 'Turn completed quizzes into colorful certificates and downloadable answer packs.', color: 'green.500' },
   ];

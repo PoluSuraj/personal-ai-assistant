@@ -18,6 +18,7 @@ import VoiceAssistant from './pages/VoiceAssistant.jsx'
 import Quiz from './pages/Quiz.jsx'
 import Wikipedia from './pages/Wikipedia.jsx'
 import Youtube from './pages/Youtube.jsx'
+import VidyaVritta from './pages/VidyaVritta.jsx'
 import LoginSignup from './components/LoginSignup.jsx'
 import ForgotPassword from './components/ForgotPassword.jsx'
 import ResetPassword from './components/ResetPassword.jsx'
@@ -68,6 +69,10 @@ const router = createBrowserRouter([
           {
             path: '/youtube-recommendation',
             element: <Youtube />,
+          },
+          {
+            path: '/vidya-vritta',
+            element: <VidyaVritta />,
           },
           {
             path: '/wikipedia-search',
@@ -151,3 +156,11 @@ createRoot(document.getElementById('root')).render(
     </Provider>
   </StrictMode>,
 )
+
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
+      console.error("App installation support could not start:", error);
+    });
+  });
+}

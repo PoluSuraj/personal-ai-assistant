@@ -18,9 +18,17 @@ import {
   useColorMode,
   useColorModeValue,
   Tooltip,
+  Drawer,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerHeader,
+  DrawerBody,
+  DrawerCloseButton,
+  Icon,
+  HStack,
 } from "@chakra-ui/react";
-import { FaWikipediaW, FaComments, FaYoutube, FaClipboardList, FaCog, FaHome, FaBell, FaMicrophone } from "react-icons/fa";
-import { NavLink } from "react-router-dom";
+import { FaWikipediaW, FaComments, FaYoutube, FaClipboardList, FaCog, FaHome, FaBell, FaMicrophone, FaEllipsisH, FaUserCircle, FaFilm } from "react-icons/fa";
+import { NavLink, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import useNotificationCounts from "../hooks/useNotificationCounts";
 
@@ -80,6 +88,8 @@ const SidebarIcon = ({ icon, to, label, badgeCount = 0 }) => {
 
 const Sidebar = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const mobileMenu = useDisclosure();
+  const location = useLocation();
   const { colorMode, toggleColorMode } = useColorMode();
   const [collapsed, setCollapsed] = useState(true);
   const userData = useSelector((state) => state.authSlice.userData);
@@ -91,10 +101,25 @@ const Sidebar = () => {
   const settingsColor = useColorModeValue("gray.500", "gray.400");
   const settingsBg = useColorModeValue("gray.50", "whiteAlpha.100");
   const scrollbarThumb = useColorModeValue("gray.300", "whiteAlpha.300");
+  const mobileInactiveColor = useColorModeValue("gray.600", "gray.300");
+  const mobileItems = [
+    { icon: FaHome, label: "Home", to: "/dashboard" },
+    { icon: FaComments, label: "Chat", to: "/chat" },
+    { icon: FaFilm, label: "VidyaVritta", to: "/vidya-vritta" },
+    { icon: FaClipboardList, label: "Quiz", to: "/quiz" },
+  ];
+  const moreItems = [
+    { icon: FaMicrophone, label: "Voice assistant", to: "/voice-assistant" },
+    { icon: FaYoutube, label: "Videos", to: "/youtube-recommendation" },
+    { icon: FaWikipediaW, label: "Knowledge Base", to: "/wikipedia-search" },
+    { icon: FaBell, label: "Notifications", to: "/notifications" },
+    { icon: FaUserCircle, label: "Profile & Settings", to: "/userSettings" },
+  ];
 
   return (
     <>
       <Box
+        display={{ base: "none", md: "flex" }}
         w={collapsed ? "88px" : "220px"}
         h="100dvh"
         maxH="100dvh"
@@ -102,7 +127,6 @@ const Sidebar = () => {
         borderRight="1px solid"
         borderColor={sidebarBorder}
         transition="width 0.25s ease"
-        display="flex"
         flexDirection="column"
         alignItems="center"
         py={5}
@@ -146,6 +170,7 @@ const Sidebar = () => {
           <SidebarIcon icon={FaComments} to="/chat" label="Chat" />
           <SidebarIcon icon={FaMicrophone} to="/voice-assistant" label="Voice Assistant" />
           <SidebarIcon icon={FaYoutube} to="/youtube-recommendation" label="Videos" />
+          <SidebarIcon icon={FaFilm} to="/vidya-vritta" label="VidyaVritta study shorts" />
           <SidebarIcon icon={FaWikipediaW} to="/wikipedia-search" label="Wiki" />
           <SidebarIcon icon={FaClipboardList} to="/quiz" label="Quiz" />
           <SidebarIcon icon={FaBell} to="/notifications" label="Notifications" badgeCount={userUnread} />
@@ -159,6 +184,55 @@ const Sidebar = () => {
           </Tooltip>
         </Box>
       </Box>
+      <HStack
+        display={{ base: "flex", md: "none" }}
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        zIndex="sticky"
+        justify="space-around"
+        align="stretch"
+        spacing={0}
+        minH="68px"
+        pb="env(safe-area-inset-bottom)"
+        bg={bg}
+        borderTop="1px solid"
+        borderColor={sidebarBorder}
+        boxShadow="0 -4px 18px rgba(15, 23, 42, 0.10)"
+      >
+        {mobileItems.map(({ icon, label, to }) => {
+          const active = location.pathname === to;
+          return (
+            <NavLink key={to} to={to} style={{ flex: 1 }}>
+              <VStack spacing={1} h="68px" justify="center" color={active ? "var(--chakra-colors-brand-600)" : "var(--chakra-colors-gray-600)"}>
+                <Icon as={icon} boxSize={5} />
+                <Text fontSize="xs" fontWeight={active ? "bold" : "medium"}>{label}</Text>
+              </VStack>
+            </NavLink>
+          );
+        })}
+        <Button flex={1} h="68px" variant="ghost" color={mobileInactiveColor} onClick={mobileMenu.onOpen} aria-label="More features">
+          <VStack spacing={1}><Icon as={FaEllipsisH} boxSize={5} /><Text fontSize="xs">More</Text></VStack>
+        </Button>
+      </HStack>
+      <Drawer isOpen={mobileMenu.isOpen} placement="bottom" onClose={mobileMenu.onClose}>
+        <DrawerOverlay />
+        <DrawerContent borderTopRadius="xl" pb="env(safe-area-inset-bottom)">
+          <DrawerCloseButton />
+          <DrawerHeader>More learning tools</DrawerHeader>
+          <DrawerBody pb={6}>
+            <VStack align="stretch" spacing={2}>
+              {moreItems.map(({ icon, label, to }) => (
+                <Button key={to} as={NavLink} to={to} justifyContent="flex-start" leftIcon={<Icon as={icon} />} variant={location.pathname === to ? "solid" : "ghost"} colorScheme={location.pathname === to ? "brand" : undefined} onClick={mobileMenu.onClose}>
+                  {label}{to === "/notifications" && userUnread > 0 ? ` (${userUnread > 9 ? "9+" : userUnread})` : ""}
+                </Button>
+              ))}
+              <Button justifyContent="flex-start" leftIcon={<Icon as={FaCog} />} variant="ghost" onClick={() => { mobileMenu.onClose(); onOpen(); }}>Preferences</Button>
+            </VStack>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
       <Modal isOpen={isOpen} onClose={onClose} isCentered size="sm">
         <ModalOverlay backdropFilter="blur(5px)" />
         <ModalContent borderRadius="2xl">

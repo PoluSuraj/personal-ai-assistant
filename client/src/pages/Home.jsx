@@ -6,6 +6,7 @@ import {
 	FaYoutube,
 	FaClipboardList,
 	FaUserCircle,
+	FaFilm,
 } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -47,7 +48,7 @@ const ServiceCommandCenter = ({ onStart, onVoiceStart }) => {
 					<Text color={mutedColor}>Chat, quiz, resources, video recommendations, auth, email, and uploads all report their status here. Missing keys use fallback mode so the product remains usable.</Text>
 					<Progress value={health ? readiness : 0} colorScheme={health?.mode === "demo" ? "orange" : "green"} borderRadius="full" w="full" />
 				</VStack>
-				<SimpleGrid columns={{ base: 2, md: 3 }} spacing={3} minW={{ lg: "420px" }}>
+				<SimpleGrid columns={{ base: 2, md: 3 }} spacing={3} w={{ base: "full", lg: "420px" }} maxW="full" flexShrink={0}>
 					{["database", "ai", "youtube", "email", "cloudinary", "auth"].map((name) => (
 						<Box key={name} p={3} borderWidth="1px" borderColor={borderColor} borderRadius="lg">
 							<Text fontSize="xs" textTransform="uppercase" color={mutedColor} fontWeight="bold">{name}</Text>
@@ -172,7 +173,7 @@ function Home() {
 	);
 
 	return (
-		<Box w="100vw" minH="100vh" overflowX="hidden" position="relative">
+		<Box w="full" minW={0} minH="100vh" overflowX="hidden" position="relative">
 			{/* Premium Mesh Gradient Background */}
 			<Box
 				position="absolute"
@@ -305,6 +306,13 @@ function Home() {
 							description="Curated educational video content."
 							color="red"
 							onClick={() => navigate("/youtube-recommendation")}
+						/>
+						<FeatureCard
+							icon={FaFilm}
+							label="VidyaVritta"
+							description="Swipe through short, study-focused lessons."
+							color="teal"
+							onClick={() => navigate("/vidya-vritta")}
 						/>
 						<FeatureCard
 							icon={FaClipboardList}

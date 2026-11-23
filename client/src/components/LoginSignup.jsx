@@ -18,6 +18,7 @@ import {
 } from "@chakra-ui/react";
 import { useDispatch, useSelector } from "react-redux";
 import { getHealth, setStoredAccessToken } from "../utils/api";
+import { activateDeviceSession } from "../utils/deviceStorage";
 import { API_BASE_URL } from "../utils/api";
 import { login as authLogin } from "../store/authSlice.js";
 
@@ -117,6 +118,7 @@ function LoginSignup() {
 
       if (data.data?.accessToken) {
         setStoredAccessToken(data.data.accessToken);
+        activateDeviceSession(data.data);
         dispatch(authLogin(data.data));
         navigate("/dashboard");
         return;

@@ -30,7 +30,7 @@ export default function AdminUsers() {
   const [selectedEmail, setSelectedEmail] = useState("");
   const [selectedDetails, setSelectedDetails] = useState(null);
   const [form, setForm] = useState({ name: "", email: "", role: "user" });
-  const [profileForm, setProfileForm] = useState({ name: "", username: "", bio: "", emailNotifications: true, adaptivePractice: true });
+  const [profileForm, setProfileForm] = useState({ name: "", username: "", bio: "", dateOfBirth: "", institutionName: "", institutionCountry: "", institutionType: "", emailNotifications: true, adaptivePractice: true, dailyMotivationEmails: true });
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -54,8 +54,13 @@ export default function AdminUsers() {
         name: data.data.user?.name || "",
         username: data.data.user?.username || "",
         bio: data.data.user?.bio || "",
+        dateOfBirth: data.data.user?.dateOfBirth || "",
+        institutionName: data.data.user?.institutionName || "",
+        institutionCountry: data.data.user?.institutionCountry || "",
+        institutionType: data.data.user?.institutionType || "",
         emailNotifications: data.data.user?.preferences?.emailNotifications ?? true,
         adaptivePractice: data.data.user?.preferences?.adaptivePractice ?? true,
+        dailyMotivationEmails: data.data.user?.preferences?.dailyMotivationEmails ?? true,
       });
     } catch (error) {
       toast({
@@ -96,9 +101,14 @@ export default function AdminUsers() {
           name: profileForm.name,
           username: profileForm.username,
           bio: profileForm.bio,
+          dateOfBirth: profileForm.dateOfBirth,
+          institutionName: profileForm.institutionName,
+          institutionCountry: profileForm.institutionCountry,
+          institutionType: profileForm.institutionType,
           preferences: {
             emailNotifications: profileForm.emailNotifications,
             adaptivePractice: profileForm.adaptivePractice,
+            dailyMotivationEmails: profileForm.dailyMotivationEmails,
           },
         }),
       });
@@ -225,6 +235,9 @@ export default function AdminUsers() {
                     <Text><strong>Username:</strong> {selectedDetails.user?.username || 'Not set'}</Text>
                     <Text><strong>Role:</strong> {selectedDetails.user?.isAdmin ? 'Administrator' : 'Learner'}</Text>
                     <Text><strong>Email verified:</strong> {selectedDetails.user?.isEmailVerified ? 'Yes' : 'No'}</Text>
+                    <Text><strong>Date of birth:</strong> {selectedDetails.user?.dateOfBirth || 'Not set'}</Text>
+                    <Text><strong>Institution type:</strong> {selectedDetails.user?.institutionType || 'Not set'}</Text>
+                    <Text><strong>Institution:</strong> {selectedDetails.user?.institutionName ? `${selectedDetails.user.institutionName}${selectedDetails.user.institutionCountry ? `, ${selectedDetails.user.institutionCountry}` : ''}` : 'Not set'}</Text>
                     <Text><strong>Created:</strong> {selectedDetails.user?.createdAt ? new Date(selectedDetails.user.createdAt).toLocaleString() : '—'}</Text>
                     <Text><strong>Updated:</strong> {selectedDetails.user?.updatedAt ? new Date(selectedDetails.user.updatedAt).toLocaleString() : '—'}</Text>
                     <Text><strong>Avatar:</strong> {selectedDetails.user?.avatar || 'No profile photo'}</Text>
@@ -243,11 +256,16 @@ export default function AdminUsers() {
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                     <FormControl><FormLabel>Name</FormLabel><Input value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} maxLength={100} /></FormControl>
                     <FormControl><FormLabel>Username</FormLabel><Input value={profileForm.username} onChange={(event) => setProfileForm({ ...profileForm, username: event.target.value })} maxLength={30} placeholder="3-30 letters, numbers, . _ -" /></FormControl>
+                    <FormControl><FormLabel>Date of birth</FormLabel><Input type="date" value={profileForm.dateOfBirth} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setProfileForm({ ...profileForm, dateOfBirth: event.target.value })} /></FormControl>
+                    <FormControl><FormLabel>Institution type</FormLabel><Select value={profileForm.institutionType} onChange={(event) => setProfileForm({ ...profileForm, institutionType: event.target.value })}><option value="">Not set</option><option value="school">School</option><option value="college">College / university</option><option value="other">Other</option></Select></FormControl>
+                    <FormControl><FormLabel>Institution</FormLabel><Input value={profileForm.institutionName} maxLength={160} onChange={(event) => setProfileForm({ ...profileForm, institutionName: event.target.value })} /></FormControl>
+                    <FormControl><FormLabel>Institution country</FormLabel><Input value={profileForm.institutionCountry} maxLength={100} onChange={(event) => setProfileForm({ ...profileForm, institutionCountry: event.target.value })} /></FormControl>
                     <FormControl gridColumn={{ md: "1 / -1" }}><FormLabel>Bio</FormLabel><Textarea value={profileForm.bio} onChange={(event) => setProfileForm({ ...profileForm, bio: event.target.value })} maxLength={500} /></FormControl>
                   </SimpleGrid>
                   <HStack mt={4} spacing={6} flexWrap="wrap">
                     <Checkbox isChecked={profileForm.emailNotifications} onChange={(event) => setProfileForm({ ...profileForm, emailNotifications: event.target.checked })}>Email notifications</Checkbox>
                     <Checkbox isChecked={profileForm.adaptivePractice} onChange={(event) => setProfileForm({ ...profileForm, adaptivePractice: event.target.checked })}>Adaptive practice</Checkbox>
+                    <Checkbox isChecked={profileForm.dailyMotivationEmails} onChange={(event) => setProfileForm({ ...profileForm, dailyMotivationEmails: event.target.checked })}>Daily motivation emails</Checkbox>
                   </HStack>
                   <Button mt={4} colorScheme="teal" onClick={saveProfile} isLoading={loading}>Save profile changes</Button>
                   <Text fontSize="xs" color={muted} mt={2}>Role changes and account removal remain separate administrator actions.</Text>

@@ -17,6 +17,12 @@ import { Activity } from "../models/activity.model.js";
 import { Subscription } from "../models/subscription.model.js";
 
 const OTP_SKIP_WINDOW_MS = 60 * 60 * 1000;
+const isValidDateOfBirth = (value) => {
+    if (!value) return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value && value <= new Date().toISOString().slice(0, 10);
+};
 
 const makeTemporaryPassword = () => {
     const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -531,7 +537,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-    const { name, email, username, bio, preferences } = req.body;
+    const { name, email, username, bio, dateOfBirth, institutionName, institutionCountry, institutionType, preferences } = req.body;
 
     if (!name || !email) {
         throw new ApiError(400, "Name and Email are required");
@@ -545,6 +551,10 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
             email,
             username: normalizedUsername || "",
             bio,
+            dateOfBirth,
+            institutionName,
+            institutionCountry,
+            institutionType,
             preferences,
         });
         if (!user) throw new ApiError(404, "Demo user not found");
@@ -568,12 +578,23 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     user.email = email.trim().toLowerCase();
     user.username = normalizedUsername || undefined;
     if (bio !== undefined) user.bio = bio;
+    if (dateOfBirth !== undefined) {
+        if (!isValidDateOfBirth(dateOfBirth)) throw new ApiError(400, "Enter a valid date of birth that is not in the future");
+        user.dateOfBirth = dateOfBirth;
+    }
+    if (institutionName !== undefined) user.institutionName = String(institutionName).trim().slice(0, 160);
+    if (institutionCountry !== undefined) user.institutionCountry = String(institutionCountry).trim().slice(0, 100);
+    if (institutionType !== undefined) {
+        if (!["", "school", "college", "other"].includes(institutionType)) throw new ApiError(400, "Choose a valid institution type");
+        user.institutionType = institutionType;
+    }
 
     if (preferences && typeof preferences === "object") {
         user.preferences = {
             emailNotifications: preferences.emailNotifications ?? user.preferences?.emailNotifications ?? true,
             twoFactorAuth: preferences.twoFactorAuth ?? user.preferences?.twoFactorAuth ?? false,
             adaptivePractice: preferences.adaptivePractice ?? user.preferences?.adaptivePractice ?? true,
+            dailyMotivationEmails: preferences.dailyMotivationEmails ?? user.preferences?.dailyMotivationEmails ?? true,
         };
     }
 
@@ -646,7 +667,7 @@ const listUsers = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, [{ email: req.user.email, name: req.user.name, isAdmin: true }], "Demo users loaded"));
     }
 
-    const users = await User.find().select("name email username bio avatar preferences isAdmin createdAt updatedAt").sort({ createdAt: -1 });
+    const users = await User.find().select("name email username bio avatar dateOfBirth institutionName institutionCountry institutionType preferences isAdmin createdAt updatedAt").sort({ createdAt: -1 });
     return res.status(200).json(new ApiResponse(200, users, "Users loaded"));
 });
 
@@ -740,7 +761,7 @@ const getManagedUserActivities = asyncHandler(async (req, res) => {
 
 const updateManagedUser = asyncHandler(async (req, res) => {
     const email = decodeURIComponent(req.params.email || "").trim().toLowerCase();
-    const { name, username, bio, preferences } = req.body;
+    const { name, username, bio, dateOfBirth, institutionName, institutionCountry, institutionType, preferences } = req.body;
     if (!email) throw new ApiError(400, "User email is required");
 
     const user = await User.findOne({ email });
@@ -761,13 +782,23 @@ const updateManagedUser = asyncHandler(async (req, res) => {
         if (String(bio).length > 500) throw new ApiError(400, "Bio must be 500 characters or fewer");
         user.bio = String(bio).trim();
     }
+    if (dateOfBirth !== undefined) {
+        if (!isValidDateOfBirth(dateOfBirth)) throw new ApiError(400, "Enter a valid date of birth that is not in the future");
+        user.dateOfBirth = dateOfBirth;
+    }
+    if (institutionName !== undefined) user.institutionName = String(institutionName).trim().slice(0, 160);
+    if (institutionCountry !== undefined) user.institutionCountry = String(institutionCountry).trim().slice(0, 100);
+    if (institutionType !== undefined) {
+        if (!["", "school", "college", "other"].includes(institutionType)) throw new ApiError(400, "Choose a valid institution type");
+        user.institutionType = institutionType;
+    }
     if (preferences && typeof preferences === "object") {
-        for (const key of ["emailNotifications", "adaptivePractice"]) {
+        for (const key of ["emailNotifications", "adaptivePractice", "dailyMotivationEmails"]) {
             if (typeof preferences[key] === "boolean") user.preferences[key] = preferences[key];
         }
     }
     await user.save();
-    const safeUser = await User.findById(user._id).select("name email username bio avatar preferences isAdmin isEmailVerified createdAt updatedAt");
+    const safeUser = await User.findById(user._id).select("name email username bio avatar dateOfBirth institutionName institutionCountry institutionType preferences isAdmin isEmailVerified createdAt updatedAt");
     return res.status(200).json(new ApiResponse(200, { ...safeUser.toObject(), isAdmin: isAdminUser(safeUser) }, "User profile updated"));
 });
 
