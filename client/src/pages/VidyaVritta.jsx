@@ -25,6 +25,7 @@ import { apiFetch } from "../utils/api";
 const suggestions = ["Mathematics", "Physics", "Chemistry", "Biology", "History", "Coding", "Study skills"];
 const SAVED_KEY = "paa_vidyavritta_saved";
 const LIKED_KEY = "paa_vidyavritta_liked";
+const FEED_SIZE = 6;
 
 const readList = (key) => {
   try {
@@ -36,6 +37,25 @@ const readList = (key) => {
 };
 
 const readSavedReels = () => readList(SAVED_KEY).filter((item) => item?.id?.videoId && item?.snippet?.title);
+
+const selectFreshFeed = (items, query) => {
+  const candidates = [...items];
+  for (let index = candidates.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [candidates[index], candidates[swapIndex]] = [candidates[swapIndex], candidates[index]];
+  }
+
+  const historyKey = `paa_vidyavritta_recent:${query.trim().toLowerCase()}`;
+  const previousIds = readList(historyKey);
+  const unseen = candidates.filter((item) => !previousIds.includes(item.id?.videoId));
+  const selection = [...unseen, ...candidates.filter((item) => previousIds.includes(item.id?.videoId))].slice(0, FEED_SIZE);
+  try {
+    window.localStorage.setItem(historyKey, JSON.stringify(selection.map((item) => item.id.videoId)));
+  } catch {
+    // A full or disabled local storage should not prevent the feed from loading.
+  }
+  return selection;
+};
 
 export default function VidyaVritta() {
   const [query, setQuery] = useState("");
@@ -63,7 +83,8 @@ export default function VidyaVritta() {
     setNeedsYoutubeKey(false);
     apiFetch(`/api/v1/youtube/search?format=study-short&query=${encodeURIComponent(`${submittedQuery} educational short lesson`)}`, { signal: controller.signal })
       .then((result) => {
-        setReels(result.fallback ? [] : (Array.isArray(result.data) ? result.data : []));
+        const candidates = result.fallback ? [] : (Array.isArray(result.data) ? result.data : []);
+        setReels(selectFreshFeed(candidates, submittedQuery));
         setNeedsYoutubeKey(Boolean(result.fallback));
         setActiveIndex(0);
         if (feedRef.current) feedRef.current.scrollTop = 0;

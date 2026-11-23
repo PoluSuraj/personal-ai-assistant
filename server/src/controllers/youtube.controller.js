@@ -39,7 +39,7 @@ const searchVideos = asyncHandler(async (req, res) => {
                 q: format === "study-short" ? `${query} learning lesson short` : query,
                 type: "video",
                 ...(format === "study-short" ? { videoCategoryId: "27", videoDuration: "short" } : {}),
-                maxResults: 6,
+                maxResults: format === "study-short" ? 25 : 6,
                 key: API_KEY
             }
         });
