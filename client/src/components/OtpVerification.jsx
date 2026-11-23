@@ -288,20 +288,25 @@ export default function OtpVerification() {
 
 					{/* OTP Input Fields */}
 					<VStack spacing={6} w="full">
-						<HStack spacing={{ base: 1, sm: 3 }} justify="center" w="full" flexWrap="nowrap">
+						<HStack spacing={{ base: 2, sm: 3 }} justify="center" w="full" flexWrap="nowrap">
 							{otp.map((value, index) => (
 								<Input
 									key={index}
 									id={`otp-input-${index}`}
 									ref={index === 0 ? firstInputRef : null}
+									aria-label={`OTP digit ${index + 1} of 6`}
 									type="text"
-									maxLength="1"
+									maxLength={index === 0 ? 6 : 1}
 									textAlign="center"
-									fontSize="2xl"
+									fontSize={{ base: "28px", sm: "2xl" }}
 									fontWeight="bold"
-									w={{ base: "clamp(30px, 9.5vw, 38px)", sm: "50px" }}
-									minW={0}
-									h={{ base: "52px", sm: "60px" }}
+									fontFamily="mono"
+									lineHeight="1"
+									w={{ base: "clamp(40px, 11vw, 48px)", sm: "50px" }}
+									minW={{ base: "40px", sm: "50px" }}
+									flexShrink={0}
+									p={0}
+									h={{ base: "58px", sm: "60px" }}
 									borderRadius={{ base: "lg", sm: "xl" }}
 									bg={inputBg}
 									border="2px solid"
@@ -316,10 +321,10 @@ export default function OtpVerification() {
 									onChange={(e) => handleChange(index, e.target.value)}
 									onKeyDown={(e) => handleKeyDown(index, e)}
 									inputMode="numeric"
-									autoComplete="one-time-code"
+									autoComplete={index === 0 ? "one-time-code" : "off"}
 									value={value}
-									placeholder="•"
 									color={otpTextColor}
+									style={{ WebkitTextFillColor: otpTextColor, caretColor: "var(--chakra-colors-brand-500)" }}
 								/>
 							))}
 						</HStack>
