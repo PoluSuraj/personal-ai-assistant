@@ -52,7 +52,7 @@ export default function About() {
   const projectGuide = { name: 'DR. K NAGARAJU', role: 'Project Guide & Mentor', email: 'nagarajuk@adityauniversity.in', photo: '/guide.jpg' };
 
   return (
-    <Container maxW="container.lg" py={12}>
+    <Container maxW="full" px={{ base: 4, md: 8, xl: 10 }} py={{ base: 6, md: 10 }}>
       <Box mb={12}>
         <Heading mb={4}>About</Heading>
         <VStack align="stretch" spacing={4} color={mutedColor} fontSize="lg">
