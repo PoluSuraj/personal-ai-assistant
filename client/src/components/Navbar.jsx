@@ -116,15 +116,15 @@ export default function Navbar() {
 
   return (
     <Box position="sticky" top="0" zIndex="sticky" width="100%">
-      <Flex bg={bg} color={textColor} minH="60px" py={{ base: 2 }} px={{ base: 4 }} borderBottom={1} borderStyle="solid" borderColor={borderColor} align="center" boxShadow="sm">
-        <Flex flex={{ base: 1, md: 'auto' }} ml={{ base: -2 }} display={{ base: 'flex', md: 'none' }}>
+      <Flex bg={bg} color={textColor} minH={{ base: "56px", md: "60px" }} py={{ base: 1, md: 2 }} px={{ base: 2, sm: 4 }} borderBottom={1} borderStyle="solid" borderColor={borderColor} align="center" boxShadow="sm" gap={{ base: 1, md: 0 }}>
+        <Flex flex="0 0 auto" display={{ base: 'flex', md: 'none' }}>
           <IconButton onClick={onToggle} icon={isOpen ? <CloseIcon w={3} h={3} /> : <HamburgerIcon w={5} h={5} />} variant="ghost" aria-label="Toggle Navigation" />
         </Flex>
 
-        <Flex flex={{ base: 1 }} justify={{ base: 'start', md: 'start' }} alignItems="center">
+        <Flex flex={{ base: 1, md: 'initial' }} minW={0} justify="start" alignItems="center">
           <Link onClick={() => navigate('/dashboard')} _hover={{ textDecoration: 'none', opacity: 0.8 }} cursor="pointer">
             <Flex alignItems="center">
-              <Box as="img" src="/logo.svg" alt="AI Assistant Logo" h="40px" mr={3} objectFit="contain" />
+              <Box as="img" src="/logo.svg" alt="AI Assistant Logo" h={{ base: "36px", md: "40px" }} mr={{ base: 0, md: 3 }} objectFit="contain" />
               <Text textAlign={useBreakpointValue({ base: 'center', md: 'left' })} fontFamily="heading" fontWeight="bold" fontSize="xl" bgGradient="linear(to-r, brand.400, accent.500)" bgClip="text" display={{ base: 'none', md: 'block' }}>
                 Personal AI Assistant
               </Text>
@@ -145,14 +145,15 @@ export default function Navbar() {
           </Stack>
         </Flex>
 
-        <Stack flex={{ base: 1, md: 0 }} justify="flex-end" direction="row" spacing={4} alignItems="center">
-          <InstallAppButton size="xs" />
-          {user ? <BackendStatus compact={false} adminView={isAdmin} /> : null}
-          <IconButton size="md" icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />} aria-label="Toggle Color Mode" onClick={toggleColorMode} variant="ghost" rounded="full" />
+        <Stack flex={{ base: "0 0 auto", md: 0 }} justify="flex-end" direction="row" spacing={{ base: 1, md: 4 }} alignItems="center">
+          <Box display={{ base: "none", md: "block" }}><InstallAppButton size="sm" /></Box>
+          {user ? <Box display={{ base: "block", md: "none" }}><BackendStatus compact adminView={isAdmin} /></Box> : null}
+          {user ? <Box display={{ base: "none", md: "block" }}><BackendStatus compact={false} adminView={isAdmin} /></Box> : null}
+          <IconButton size={{ base: "sm", md: "md" }} minW={{ base: 8, md: 10 }} icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />} aria-label="Toggle Color Mode" onClick={toggleColorMode} variant="ghost" rounded="full" />
           {user ? (
             <Menu>
-              <MenuButton as={Button} rounded="full" variant="link" cursor="pointer" minW={0} position="relative">
-                <Avatar size="sm" src={user.avatar} name={user.name} borderWidth="2px" borderColor="brand.400" />
+              <MenuButton as={Button} rounded="full" variant="link" cursor="pointer" minW={0} h="auto" p={0} position="relative">
+                <Avatar size={{ base: "xs", sm: "sm" }} src={user.avatar} name={user.name} borderWidth="2px" borderColor="brand.400" />
                 {userUnread > 0 ? (
                   <Badge position="absolute" top="-1" right="-1" minW="18px" h="18px" borderRadius="full" bg="red.500" color="white" display="flex" alignItems="center" justifyContent="center" fontSize="0.65rem">
                     {userUnread > 9 ? '9+' : userUnread}

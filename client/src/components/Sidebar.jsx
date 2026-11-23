@@ -31,6 +31,7 @@ import { FaWikipediaW, FaComments, FaYoutube, FaClipboardList, FaCog, FaHome, Fa
 import { NavLink, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import useNotificationCounts from "../hooks/useNotificationCounts";
+import InstallAppButton from "./InstallAppButton";
 
 const SidebarIcon = ({ icon, to, label, badgeCount = 0 }) => {
   const inactiveColor = useColorModeValue("gray.600", "gray.400");
@@ -194,7 +195,7 @@ const Sidebar = () => {
         justify="space-around"
         align="stretch"
         spacing={0}
-        minH="68px"
+        minH="calc(64px + env(safe-area-inset-bottom))"
         pb="env(safe-area-inset-bottom)"
         bg={bg}
         borderTop="1px solid"
@@ -205,15 +206,15 @@ const Sidebar = () => {
           const active = location.pathname === to;
           return (
             <NavLink key={to} to={to} style={{ flex: 1 }}>
-              <VStack spacing={1} h="68px" justify="center" color={active ? "var(--chakra-colors-brand-600)" : "var(--chakra-colors-gray-600)"}>
-                <Icon as={icon} boxSize={5} />
-                <Text fontSize="xs" fontWeight={active ? "bold" : "medium"}>{label}</Text>
+              <VStack spacing={1} h="64px" minW={0} justify="center" color={active ? "var(--chakra-colors-brand-600)" : "var(--chakra-colors-gray-600)"}>
+                <Icon as={icon} boxSize={5} flexShrink={0} />
+                <Text fontSize="10px" lineHeight="1" fontWeight={active ? "bold" : "medium"} whiteSpace="nowrap">{label}</Text>
               </VStack>
             </NavLink>
           );
         })}
-        <Button flex={1} h="68px" variant="ghost" color={mobileInactiveColor} onClick={mobileMenu.onOpen} aria-label="More features">
-          <VStack spacing={1}><Icon as={FaEllipsisH} boxSize={5} /><Text fontSize="xs">More</Text></VStack>
+        <Button flex={1} minW={0} h="64px" variant="ghost" color={mobileInactiveColor} onClick={mobileMenu.onOpen} aria-label="More features">
+          <VStack spacing={1}><Icon as={FaEllipsisH} boxSize={5} /><Text fontSize="10px" lineHeight="1">More</Text></VStack>
         </Button>
       </HStack>
       <Drawer isOpen={mobileMenu.isOpen} placement="bottom" onClose={mobileMenu.onClose}>
@@ -228,6 +229,9 @@ const Sidebar = () => {
                   {label}{to === "/notifications" && userUnread > 0 ? ` (${userUnread > 9 ? "9+" : userUnread})` : ""}
                 </Button>
               ))}
+              <Box pt={2} borderTop="1px solid" borderColor="blackAlpha.200">
+                <InstallAppButton fullWidth />
+              </Box>
               <Button justifyContent="flex-start" leftIcon={<Icon as={FaCog} />} variant="ghost" onClick={() => { mobileMenu.onClose(); onOpen(); }}>Preferences</Button>
             </VStack>
           </DrawerBody>
