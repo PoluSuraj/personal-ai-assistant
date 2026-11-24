@@ -13,6 +13,79 @@ const THOUGHTS = [
     "Learning is not a race. Showing up with an open mind is already a meaningful achievement.",
 ];
 
+const MAXIM_SUBJECTS = [
+    "A patient learner", "The diligent student", "A curious mind", "The steady scholar",
+    "A thoughtful reader", "The apprentice of any craft", "A seeker of understanding",
+    "The careful observer", "One who practises daily", "A humble student",
+    "The keeper of good habits", "A brave beginner", "An open mind", "The wise learner",
+    "A quiet hour of study", "The earnest questioner", "A persevering scholar", "The attentive hand",
+];
+
+const MAXIM_ACTIONS = [
+    "makes a lantern of each question", "turns small practice into lasting skill",
+    "gathers strength from every careful attempt", "builds a sure path one lesson at a time",
+    "finds a door where haste sees only a wall", "makes honest use of every mistake",
+    "lays a firm stone with each page read", "keeps a bright fire by tending it daily",
+    "draws nearer to mastery with patient work", "finds that wonder is a faithful guide",
+    "makes good judgment from knowledge well tested", "carries a little learning into great work",
+    "turns attention into a lasting companion", "discovers that courage grows by being used",
+    "makes the plainest lesson a worthy teacher", "gives each new idea room to take root",
+    "gains a sure footing by beginning humbly", "keeps the mind nimble through steady inquiry",
+    "makes time serve the work that matters", "finds a rich harvest in faithful effort",
+];
+
+const MAXIM_LESSONS = [
+    "patient effort outlives sudden zeal", "the slow road often carries the surest traveller",
+    "wisdom is gathered one thoughtful page at a time", "a sound question is the beginning of an answer",
+    "what is practised with care is seldom lost", "small beginnings have often borne fine fruit",
+    "the mind grows by what it willingly examines", "diligence lends strength to natural talent",
+    "a mistake observed is a lesson reclaimed", "steady hands finish what eager hearts begin",
+    "the best time to learn is the hour one has", "a little progress faithfully kept becomes a great store",
+    "good counsel is worth more when put to work", "the seed of mastery is humble repetition",
+    "one clear thought can brighten a difficult day", "patience gives understanding room to ripen",
+    "the learner who returns each day goes far", "careful work is a quiet form of courage",
+    "an attentive mind is never wholly idle", "knowledge kept in use becomes sound judgment",
+];
+
+const hashText = (text) => {
+    let hash = 2166136261;
+    for (const character of text) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+    return hash >>> 0;
+};
+
+const composedMaximCount = MAXIM_SUBJECTS.length * MAXIM_ACTIONS.length * MAXIM_LESSONS.length;
+
+const composedMaxim = (index) => {
+    const lessonIndex = index % MAXIM_LESSONS.length;
+    const actionIndex = Math.floor(index / MAXIM_LESSONS.length) % MAXIM_ACTIONS.length;
+    const subjectIndex = Math.floor(index / (MAXIM_LESSONS.length * MAXIM_ACTIONS.length));
+    return `${MAXIM_SUBJECTS[subjectIndex]} ${MAXIM_ACTIONS[actionIndex]}, for ${MAXIM_LESSONS[lessonIndex]}.`;
+};
+
+export const selectFreshThought = ({ previousMessages, userId, dayKey }) => {
+    const used = new Set(previousMessages);
+    const availableThoughts = THOUGHTS.filter((thought) => !used.has(thought));
+    if (availableThoughts.length) {
+        return availableThoughts[hashText(`${userId}:${dayKey}`) % availableThoughts.length];
+    }
+
+    const start = hashText(`${userId}:${dayKey}`) % composedMaximCount;
+    for (let offset = 0; offset < composedMaximCount; offset += 1) {
+        const thought = composedMaxim((start + offset) % composedMaximCount);
+        if (!used.has(thought)) return thought;
+    }
+
+    throw new Error(`The unique daily maxim catalogue is exhausted for user ${userId}`);
+};
+
+const chooseUnusedThought = async (userId, dayKey) => {
+    const existing = await DailyMessage.findOne({ userId, dayKey, kind: "motivation" }).select("message").lean();
+    if (existing?.message) return existing.message;
+
+    const previousMessages = await DailyMessage.distinct("message", { userId, kind: "motivation" });
+    return selectFreshThought({ previousMessages, userId, dayKey });
+};
+
 const timezone = process.env.APP_TIMEZONE || "Asia/Kolkata";
 let lastSweepAt = 0;
 let sweepRunning = false;
@@ -108,7 +181,7 @@ export const runDailyLearningMessages = async () => {
             .lean();
 
         for (const user of users) {
-            const thought = THOUGHTS[Math.floor(Math.random() * THOUGHTS.length)];
+            const thought = await chooseUnusedThought(user._id, dayKey);
             await deliver({
                 user,
                 dayKey,
