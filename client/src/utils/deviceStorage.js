@@ -31,7 +31,7 @@ export const setStorageMode = (mode, profile) => {
   window.localStorage.setItem(MODE_KEY, mode === "device" ? "device" : "account");
   if (mode === "device" && profile?.email) {
     saveDeviceProfile(profile);
-    window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, "true");
+    window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, String(Date.now() + 60 * 60 * 1000));
   } else if (profile?.email) {
     clearDeviceSession(profile.email);
   }
@@ -40,10 +40,17 @@ export const setStorageMode = (mode, profile) => {
 export const activateDeviceSession = (profile) => {
   if (!isDeviceStorageEnabled() || !profile?.email) return;
   saveDeviceProfile(profile);
-  window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, "true");
+  window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, String(Date.now() + 60 * 60 * 1000));
 };
 
-export const hasDeviceSession = (email) => window.localStorage.getItem(`${SESSION_PREFIX}${identityKey(email)}`) === "true";
+export const hasDeviceSession = (email) => {
+  const expiresAt = Number(window.localStorage.getItem(`${SESSION_PREFIX}${identityKey(email)}`) || 0);
+  if (!expiresAt || expiresAt <= Date.now()) {
+    clearDeviceSession(email);
+    return false;
+  }
+  return true;
+};
 export const clearDeviceSession = (email) => window.localStorage.removeItem(`${SESSION_PREFIX}${identityKey(email)}`);
 
 export const getDeviceActivities = (email) => readJson(`${ACTIVITY_PREFIX}${identityKey(email)}`, []);

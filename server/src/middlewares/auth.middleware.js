@@ -41,6 +41,9 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     if (!user) {
         throw new ApiError(401, "Invalid Access Token");
     }
+    if (!user.isEmailVerified) {
+        throw new ApiError(403, "Verify your email before using this account");
+    }
 
     const payload = user.toObject();
     payload.isAdmin = isAdminUser(payload);

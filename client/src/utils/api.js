@@ -3,6 +3,7 @@ import { getDeviceActivities, getDeviceProfile, hasDeviceSession, isDeviceStorag
 const runtimeOrigin = typeof window !== "undefined" ? window.location.origin : "";
 const runtimeHostname = typeof window !== "undefined" ? window.location.hostname : "";
 const ACCESS_TOKEN_STORAGE_KEY = "personal_ai_access_token";
+const SESSION_EXPIRY_STORAGE_KEY = "personal_ai_session_expires_at";
 const PRODUCTION_API_BASE_URL = "https://personal-ai-assistant-api-4atn.onrender.com";
 
 const getDefaultApiBaseUrl = () => {
@@ -41,15 +42,32 @@ export const getStoredAccessToken = () => {
 export const setStoredAccessToken = (token) => {
   if (typeof window === "undefined") return;
   if (!token) {
-    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    clearStoredAccessToken();
     return;
   }
   window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+  try {
+    const payload = JSON.parse(window.atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    setStoredSessionExpiry(payload.exp ? payload.exp * 1000 : Date.now() + 60 * 60 * 1000);
+  } catch {
+    setStoredSessionExpiry(Date.now() + 60 * 60 * 1000);
+  }
+};
+
+export const setStoredSessionExpiry = (expiresAt = Date.now() + 60 * 60 * 1000) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SESSION_EXPIRY_STORAGE_KEY, String(expiresAt));
+};
+
+export const getStoredSessionExpiry = () => {
+  if (typeof window === "undefined") return 0;
+  return Number(window.localStorage.getItem(SESSION_EXPIRY_STORAGE_KEY) || 0);
 };
 
 export const clearStoredAccessToken = () => {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(SESSION_EXPIRY_STORAGE_KEY);
 };
 
 export function isUnauthorizedError(error) {

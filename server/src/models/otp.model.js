@@ -11,8 +11,15 @@ const otpSchema = new Schema(
 			type:String,
 			required:true
 		},
+		expiresAt: {
+			type: Date,
+			required: true,
+			default: () => new Date(Date.now() + 10 * 60 * 1000),
+		},
 	},
 	{timestamps:true}
 )
+
+otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const OtpSchema = mongoose.model('Otpdb',otpSchema)

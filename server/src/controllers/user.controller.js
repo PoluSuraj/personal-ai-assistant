@@ -16,7 +16,7 @@ import { Notification } from "../models/notification.model.js";
 import { Activity } from "../models/activity.model.js";
 import { Subscription } from "../models/subscription.model.js";
 
-const OTP_SKIP_WINDOW_MS = 60 * 60 * 1000;
+const OTP_LIFETIME_MS = 10 * 60 * 1000;
 const isValidDateOfBirth = (value) => {
     if (!value) return true;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -61,10 +61,14 @@ const registerUser = asyncHandler(async (req, res) => {
     if (!email || !password || !name) {
         throw new ApiError(404, "Missing Credentials");
     }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        throw new ApiError(400, "Enter a valid email address");
+    }
 
     if (isDemoMode()) {
         try {
-            const user = createDemoUser({ email, name, password });
+            const user = createDemoUser({ email: normalizedEmail, name, password });
             return res
                 .status(201)
                 .cookie("accessToken", "demo-access-token", accessTokenOptions)
@@ -75,52 +79,39 @@ const registerUser = asyncHandler(async (req, res) => {
             throw new ApiError(error.statusCode || 500, error.message);
         }
     }
-    const emailExist = await User.findOne({ email });
+    const emailExist = await User.findOne({ email: normalizedEmail });
     if (emailExist) {
         throw new ApiError(403, "Email already registered with other user");
     }
 
     const user = await User.create({
         name,
-        email,
+        email: normalizedEmail,
         password,
-        isAdmin: getAdminEmails().includes(String(email).toLowerCase()),
+        isAdmin: getAdminEmails().includes(normalizedEmail),
     });
 
     if (!user) {
         throw new ApiError(500, "Error occurred while Registering user user");
     }
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
-    const finalUser = await User.findById(user._id)
-        .select("email isAdmin")
-
-
-
-    // res.send(201).json(new ApiResponse(201,{},"Otp Sent"))
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    // Send OTP email (non-blocking, won't crash if email fails)
-    const otpDelivery = await sendOtpMail(email, otp).catch(err => {
+    const otp = crypto.randomInt(100000, 1000000);
+    const otpDelivery = await sendOtpMail(normalizedEmail, otp).catch(err => {
         console.error("Failed to send OTP email:", err.message);
-        return { sent: false, otp: String(otp) };
+        return { sent: false };
     });
-
-    const otpData = await OtpSchema.create({
-        email,
-        otp: String(otp),
-    })
-
-    if (!otpData) {
-        throw new ApiError(300, "Error creation of otp")
+    if (!otpDelivery?.sent && process.env.NODE_ENV === "production") {
+        await User.deleteOne({ _id: user._id });
+        throw new ApiError(503, "We could not send a verification code to that email. Check the address and try again.");
     }
-
-
-
+    await OtpSchema.findOneAndUpdate(
+        { email: normalizedEmail },
+        { $set: { otp: String(otp), expiresAt: new Date(Date.now() + OTP_LIFETIME_MS) } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     return res
         .status(201)
-        .cookie("accessToken", accessToken, accessTokenOptions)
-        .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(201, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken, devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email" : "OTP generated. Email is not configured, use the shown OTP."));
+        .json(new ApiResponse(201, { email: normalizedEmail, devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email. Verify it to finish creating your account." : "Development OTP generated. Verify it to finish creating your account."));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -137,10 +128,11 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 
     // Find user by email or username
+    const loginIdentity = String(emailOrUsername).trim();
     let user = await User.findOne({
         $or: [
-            { email: emailOrUsername },
-            { username: emailOrUsername }
+            { email: loginIdentity.toLowerCase() },
+            { username: loginIdentity.toLowerCase() }
         ]
     });
 
@@ -153,107 +145,34 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Invalid credentials");
     }
 
-    if (user.mustChangePassword) {
-        return res.status(200).json(new ApiResponse(200, {
-            email: user.email,
-            mustChangePassword: true,
-        }, "Change your temporary password to continue"));
-    }
-
-    const hasRecentOtpVerification = Boolean(
-        user.isEmailVerified
-        && user.lastOtpVerifiedAt
-        && (Date.now() - new Date(user.lastOtpVerifiedAt).getTime()) < OTP_SKIP_WINDOW_MS
-    );
-
-    if (hasRecentOtpVerification) {
-        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
-        const finalUser = await User.findById(user._id).select('-password -refreshToken');
-
-        return res
-            .status(200)
-            .cookie("accessToken", accessToken, accessTokenOptions)
-            .cookie("refreshToken", refreshToken, refreshTokenOptions)
-            .json(new ApiResponse(200, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken, otpSkipped: true }, "Signed in successfully. OTP skipped because this device was verified recently."));
-    }
-
     // Login step 1: password verified -> send OTP to email (do not issue tokens yet)
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    await OtpSchema.findOneAndUpdate(
-        { email: user.email },
-        { $set: { otp: String(otp) } },
-        { upsert: true, new: true }
-    );
+    const otp = crypto.randomInt(100000, 1000000);
     const otpDelivery = await sendOtpMail(user.email, otp).catch((err) => {
         console.error("Failed to send login OTP email:", err.message);
-        return { sent: false, otp: String(otp) };
+        return { sent: false };
     });
+    if (!otpDelivery?.sent && process.env.NODE_ENV === "production") {
+        await OtpSchema.deleteOne({ email: user.email });
+        throw new ApiError(503, "We could not send a verification code. Please try again later.");
+    }
+    await OtpSchema.findOneAndUpdate(
+        { email: user.email },
+        { $set: { otp: String(otp), expiresAt: new Date(Date.now() + OTP_LIFETIME_MS) } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     return res
         .status(200)
-        .json(new ApiResponse(200, { email: user.email, devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email. Verify OTP to complete login." : "OTP generated. Email is not configured, use the shown OTP."));
+        .json(new ApiResponse(200, { email: user.email, devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email. Verify OTP to complete login." : "Development OTP generated. Verify it to complete login."));
 });
 
 
 const registerWithGoogle = asyncHandler(async (req, res) => {
-
-    const { name, email, avatar, password } = req.body;
-
-    if (!email || !password || !name || !password) {
-        throw new ApiError(404, "Missing Credentials");
-    }
-    const emailExist = await User.findOne({ email });
-    if (emailExist) {
-        throw new ApiError(403, "Email already registered with other user");
-    }
-
-    const user = await User.create({
-        name,
-        email,
-        password,
-        avatar,
-        isEmailVerified: true,
-        isAdmin: getAdminEmails().includes(String(email).toLowerCase())
-
-    });
-    if (!user) {
-        throw new ApiError(500, "Error occurred while Registering user user");
-    }
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
-    const finalUser = await User.findById(user._id)
-        .select("-password -refreshToken")
-
-    return res
-        .status(201)
-        .cookie("accessToken", accessToken, accessTokenOptions)
-        .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(201, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken }, "User creation Success"));
-
-
+    throw new ApiError(501, "Google sign-up is unavailable until provider identity verification is configured. Use email verification instead.");
 })
 
 const loginWithGoogle = asyncHandler(async (req, res) => {
-
-    const { email } = req.body;
-    console.log(email)
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-        throw new ApiError(404, "User not found")
-    }
-
-    let finalUser = await User.findById(user._id)
-        .select("-password -refreshToken")
-
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
-    return res
-        .status(200)
-        .cookie("accessToken", accessToken, accessTokenOptions)
-        .cookie("refreshToken", refreshToken, refreshTokenOptions)
-        .json(new ApiResponse(200, { ...finalUser.toObject(), isAdmin: isAdminUser(finalUser), accessToken, refreshToken }, "User Login Success"));
-
-
+    throw new ApiError(501, "Google sign-in is unavailable until provider identity verification is configured. Use email and password with OTP instead.");
 })
 
 
@@ -433,16 +352,23 @@ const verifyOtp = asyncHandler(async (req, res) => {
             .json(new ApiResponse(200, { ...user, isAdmin: isAdminUser(user) }, "Verified Success"));
     }
 
-    const emailExist = await OtpSchema.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const emailExist = await OtpSchema.findOne({ email: normalizedEmail });
     if (!emailExist) {
         throw new ApiError(401, "Wrong credentials");
+    }
+
+    const expiresAt = emailExist.expiresAt || new Date(new Date(emailExist.createdAt).getTime() + OTP_LIFETIME_MS);
+    if (expiresAt.getTime() <= Date.now()) {
+        await OtpSchema.deleteOne({ _id: emailExist._id });
+        throw new ApiError(401, "This verification code expired. Request a new code.");
     }
 
     if (!(otp === emailExist.otp)) {
         throw new ApiError(401, "Wrong OTP");
     }
-    const user = await User.findOne({ email });
-    await OtpSchema.findOneAndDelete({ email });
+    const user = await User.findOne({ email: normalizedEmail });
+    await OtpSchema.findOneAndDelete({ email: normalizedEmail });
     if (!user) {
         throw new ApiError(404, "Something went wrong")
     }
@@ -450,6 +376,13 @@ const verifyOtp = asyncHandler(async (req, res) => {
     user.isEmailVerified = true;
     user.lastOtpVerifiedAt = new Date();
     await user.save({ validateBeforeSave: false });
+
+    if (user.mustChangePassword) {
+        return res.status(200).json(new ApiResponse(200, {
+            email: user.email,
+            mustChangePassword: true,
+        }, "Verified Success"));
+    }
 
     const safeUser = await User.findById(user._id).select('-password -refreshToken');
 

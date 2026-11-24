@@ -116,7 +116,7 @@ const sendOtpMail = async (to, otp) => {
 	const mailPassword = process.env.MAIL_PASSWORD?.trim();
 
 	if (!BREVO_API_KEY && (!mailId || !mailPassword)) {
-		console.log(`Email not configured. OTP for ${to}: ${otp}`);
+		console.warn(`OTP email delivery is not configured for ${to}.`);
 		return { sent: false, otp };
 	}
 
@@ -141,7 +141,6 @@ const sendOtpMail = async (to, otp) => {
 		return { sent: true };
 	} catch (error) {
 		console.error(`❌ Error sending OTP email to ${to}:`, error.message);
-		console.log(`OTP for ${to}: ${otp} (email sending failed)`);
 		return { sent: false, otp, error: error.message };
 	}
 };

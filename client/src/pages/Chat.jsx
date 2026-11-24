@@ -25,9 +25,9 @@ function Chat() {
 	const scrollbarThumb = useColorModeValue("gray.200", "whiteAlpha.200");
 
 	return (
-		<Flex h="100%" width="100%" overflow="hidden">
+		<Flex h="100%" width="100%" minW={0} minH={0} overflow="hidden">
 			{/* Main Chat Area */}
-			<Flex flex={1} flexDirection="column" position="relative">
+			<Flex flex={1} minW={0} minH={0} flexDirection="column" position="relative">
 				<ChatBox />
 			</Flex>
 

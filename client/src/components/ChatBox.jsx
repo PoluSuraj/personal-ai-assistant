@@ -40,19 +40,19 @@ const starterPrompts = [
 ];
 
 const markdownComponents = {
-  h1: (props) => <Heading as="h1" size="xl" my={2} {...props} />,
-  h2: (props) => <Heading as="h2" size="lg" my={2} {...props} />,
-  h3: (props) => <Heading as="h3" size="md" my={2} {...props} />,
-  p: (props) => <Text fontSize="md" my={2} {...props} />,
+  h1: (props) => <Heading as="h1" size="xl" my={2} maxW="100%" overflowWrap="anywhere" {...props} />,
+  h2: (props) => <Heading as="h2" size="lg" my={2} maxW="100%" overflowWrap="anywhere" {...props} />,
+  h3: (props) => <Heading as="h3" size="md" my={2} maxW="100%" overflowWrap="anywhere" {...props} />,
+  p: (props) => <Text fontSize="md" my={2} maxW="100%" overflowWrap="anywhere" wordBreak="break-word" {...props} />,
   ul: ({ children, ...props }) => (
     <UnorderedList pl={5} my={2} {...props}>{children}</UnorderedList>
   ),
-  li: ({ children, ...props }) => <Box as="li" mb={1} ml={4} {...props}>{children}</Box>,
+  li: ({ children, ...props }) => <Box as="li" mb={1} ml={4} overflowWrap="anywhere" wordBreak="break-word" {...props}>{children}</Box>,
   code: (props) => (
-    <Box as="code" bg="gray.100" color="purple.600" px={2} py={1} borderRadius="md" fontFamily="mono" fontSize="sm" whiteSpace="pre-wrap" fontWeight="semibold" {...props} />
+    <Box as="code" bg="gray.100" color="purple.600" px={2} py={1} borderRadius="md" fontFamily="mono" fontSize="sm" whiteSpace="pre-wrap" overflowWrap="anywhere" wordBreak="break-word" fontWeight="semibold" {...props} />
   ),
   pre: (props) => (
-    <Box as="pre" bg="gray.900" color="white" p={4} borderRadius="md" overflowX="auto" fontSize="sm" fontFamily="mono" mb={4} border="1px solid" borderColor="gray.700" boxShadow="md" {...props} />
+    <Box as="pre" bg="gray.900" color="white" p={{ base: 3, md: 4 }} borderRadius="md" maxW="100%" overflowX="auto" whiteSpace="pre" fontSize="sm" fontFamily="mono" mb={4} border="1px solid" borderColor="gray.700" boxShadow="md" {...props} />
   ),
 };
 
@@ -316,12 +316,12 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
   };
 
   return (
-    <Flex direction="column" h="100%" w="full" position="relative">
-      <Box px={6} pt={6} pb={0}>
+    <Flex direction="column" h="100%" w="full" minW={0} position="relative" overflow="hidden">
+      <Box px={{ base: 3, md: 6 }} pt={{ base: 3, md: 6 }} pb={0} minW={0}>
         <Flex direction="column" bgGradient="linear(to-r, brand.600, accent.600)" p={5} borderRadius="2xl" color="white" boxShadow="xl" position="relative" overflow="hidden" gap={4}>
           <Box position="absolute" top="-50px" right="-50px" boxSize="150px" bg="whiteAlpha.200" borderRadius="full" />
-          <Flex justify="space-between" align={{ base: "start", md: "center" }} direction={{ base: "column", md: "row" }} gap={4} zIndex={1}>
-            <HStack spacing={4}>
+          <Flex justify="space-between" align={{ base: "start", md: "center" }} direction={{ base: "column", md: "row" }} gap={4} zIndex={1} minW={0}>
+            <HStack spacing={4} minW={0}>
               <Box p={2} bg="whiteAlpha.200" borderRadius="xl" border="1px solid" borderColor="whiteAlpha.300">
                 <Icon as={FaRobot} boxSize={6} color="white" />
               </Box>
@@ -368,10 +368,10 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
         </Flex>
       </Box>
 
-      <Box flex={1} overflowY="auto" p={6} scrollBehavior="smooth" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-track': { width: '6px' }, '&::-webkit-scrollbar-thumb': { background: scrollbarThumb, borderRadius: '24px' } }}>
-        <VStack spacing={6} align="stretch" pb={4}>
+      <Box flex={1} minH={0} minW={0} overflowY="auto" overflowX="hidden" p={{ base: 3, md: 6 }} scrollBehavior="smooth" css={{ '&::-webkit-scrollbar': { width: '4px' }, '&::-webkit-scrollbar-track': { width: '6px' }, '&::-webkit-scrollbar-thumb': { background: scrollbarThumb, borderRadius: '24px' } }}>
+        <VStack spacing={{ base: 4, md: 6 }} align="stretch" minW={0} pb={4}>
           {messages.length === 0 && (
-            <VStack spacing={4} bg={emptyBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p={6} align="stretch">
+            <VStack spacing={4} bg={emptyBg} border="1px solid" borderColor={borderColor} borderRadius="2xl" p={{ base: 4, md: 6 }} align="stretch" minW={0}>
               <HStack>
                 <Icon as={FaLightbulb} color="brand.500" />
                 <Heading size="sm">{voiceMode ? "Start with your voice" : "Start with a training goal"}</Heading>
@@ -397,14 +397,14 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
           )}
 
           {messages.map((msg, index) => (
-            <HStack key={`${msg.sender}-${index}`} justify={msg.sender === "user" ? "flex-end" : "flex-start"} align="flex-start" spacing={3}>
-              {msg.sender === "bot" && <Box p={1} bg="brand.500" borderRadius="full" boxShadow="0 0 10px var(--chakra-colors-brand-500)"><Text fontSize="xs">AI</Text></Box>}
-              <Box bg={msg.sender === "user" ? "transparent" : botBg} bgGradient={msg.sender === "user" ? "linear(to-r, brand.500, brand.600)" : undefined} color={msg.sender === "user" ? "white" : botColor} backdropFilter={msg.sender === "bot" ? "blur(10px)" : undefined} border="1px solid" borderColor={msg.sender === "bot" ? borderColor : "transparent"} px={5} py={3} borderRadius="2xl" borderBottomRightRadius={msg.sender === "user" ? "none" : "2xl"} borderBottomLeftRadius={msg.sender === "bot" ? "none" : "2xl"} maxW={{ base: "92%", md: "80%" }} boxShadow={msg.sender === "user" ? "lg" : "sm"}>
+            <HStack key={`${msg.sender}-${index}`} w="full" minW={0} justify={msg.sender === "user" ? "flex-end" : "flex-start"} align="flex-start" spacing={{ base: 1, md: 3 }}>
+              {msg.sender === "bot" && <Box flexShrink={0} p={1} bg="brand.500" borderRadius="full" boxShadow="0 0 10px var(--chakra-colors-brand-500)"><Text fontSize="xs">AI</Text></Box>}
+              <Box minW={0} minWidth={0} overflow="hidden" bg={msg.sender === "user" ? "transparent" : botBg} bgGradient={msg.sender === "user" ? "linear(to-r, brand.500, brand.600)" : undefined} color={msg.sender === "user" ? "white" : botColor} backdropFilter={msg.sender === "bot" ? "blur(10px)" : undefined} border="1px solid" borderColor={msg.sender === "bot" ? borderColor : "transparent"} px={{ base: 3, md: 5 }} py={3} borderRadius="2xl" borderBottomRightRadius={msg.sender === "user" ? "none" : "2xl"} borderBottomLeftRadius={msg.sender === "bot" ? "none" : "2xl"} maxW={{ base: msg.sender === "bot" && speechSynthesisSupported ? "calc(100% - 72px)" : "calc(100% - 38px)", md: "80%" }} boxShadow={msg.sender === "user" ? "lg" : "sm"} sx={{ "& p, & li, & h1, & h2, & h3, & blockquote": { maxWidth: "100%", overflowWrap: "anywhere", wordBreak: "break-word" }, "& table": { display: "block", maxWidth: "100%", overflowX: "auto" }, "& img": { maxWidth: "100%", height: "auto" } }}>
                 <ReactMarkdown components={markdownComponents} rehypePlugins={[rehypeRaw, rehypeHighlight]}>{msg.text}</ReactMarkdown>
               </Box>
               {msg.sender === "bot" && speechSynthesisSupported ? (
                 <Tooltip label="Read aloud" hasArrow>
-                  <IconButton icon={<FaVolumeUp />} aria-label="Read aloud" size="sm" variant="ghost" onClick={() => speakText(msg.text)} />
+                  <IconButton flexShrink={0} icon={<FaVolumeUp />} aria-label="Read aloud" size="sm" variant="ghost" onClick={() => speakText(msg.text)} />
                 </Tooltip>
               ) : null}
               {msg.sender === "user" && <Box p={1} bg="accent.500" borderRadius="full" boxShadow="lg"><Text fontSize="xs">You</Text></Box>}
@@ -421,7 +421,7 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
         </VStack>
       </Box>
 
-      <Box p={4} pb={6}>
+      <Box w="full" minW={0} p={{ base: 2, md: 4 }} pb={{ base: 3, md: 6 }}>
         <VStack align="stretch" spacing={3}>
           {voiceMode ? (
             <Flex justify="space-between" align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={3} bg={controlBg} border="1px solid" borderColor={inputBorder} borderRadius="2xl" px={4} py={3}>
@@ -435,13 +435,13 @@ function ChatBox({ autoStartVoice = false, voiceMode = false }) {
               </Button>
             </Flex>
           ) : null}
-          <HStack w="full" bg={inputShellBg} backdropFilter="blur(20px)" p={2} borderRadius="full" boxShadow="xl" border="1px solid" borderColor={inputBorder} spacing={2}>
+          <HStack w="full" minW={0} bg={inputShellBg} backdropFilter="blur(20px)" p={{ base: 1, md: 2 }} borderRadius="full" boxShadow="xl" border="1px solid" borderColor={inputBorder} spacing={{ base: 0, md: 2 }}>
             <Tooltip label={speechRecognitionSupported ? (isListening ? "Stop voice assistant" : "Speak to ask") : "Voice input not supported"} hasArrow>
-              <IconButton icon={<Icon as={isListening ? FaMicrophoneSlash : FaMicrophone} boxSize={4} />} aria-label="Voice Input" colorScheme={isListening ? "red" : "brand"} variant={isListening ? "solid" : "ghost"} rounded="full" size="sm" onClick={() => handleVoiceInput()} />
+              <IconButton flexShrink={0} icon={<Icon as={isListening ? FaMicrophoneSlash : FaMicrophone} boxSize={4} />} aria-label="Voice Input" colorScheme={isListening ? "red" : "brand"} variant={isListening ? "solid" : "ghost"} rounded="full" size="sm" onClick={() => handleVoiceInput()} />
             </Tooltip>
-            <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={isListening ? "Listening... say your question" : voiceMode ? "Or type your issue here..." : "Ask anything..."} flex={1} variant="unstyled" px={4} fontSize="md" color={inputColor} />
-            <IconButton icon={<FaPaperPlane />} onClick={() => handleSendMessage()} aria-label="Send" colorScheme="brand" rounded="full" size="md" boxShadow="lg" isDisabled={!input.trim() || botTyping} isLoading={botTyping} />
-            <IconButton icon={<FaTrash />} onClick={handleClearChat} aria-label="Clear Chat" colorScheme="red" variant="ghost" rounded="full" size="sm" />
+            <Input minW={0} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={isListening ? "Listening... say your question" : voiceMode ? "Or type your issue here..." : "Ask anything..."} flex={1} variant="unstyled" px={{ base: 1, md: 4 }} fontSize="md" color={inputColor} />
+            <IconButton flexShrink={0} icon={<FaPaperPlane />} onClick={() => handleSendMessage()} aria-label="Send" colorScheme="brand" rounded="full" size="md" boxShadow="lg" isDisabled={!input.trim() || botTyping} isLoading={botTyping} />
+            <IconButton flexShrink={0} icon={<FaTrash />} onClick={handleClearChat} aria-label="Clear Chat" colorScheme="red" variant="ghost" rounded="full" size="sm" />
           </HStack>
         </VStack>
       </Box>

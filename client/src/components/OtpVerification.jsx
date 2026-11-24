@@ -16,7 +16,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login as authLogin } from "../store/authSlice.js";
 import { ArrowBackIcon } from "@chakra-ui/icons";
-import { API_BASE_URL, setStoredAccessToken } from "../utils/api";
+import { API_BASE_URL, setStoredAccessToken, setStoredSessionExpiry } from "../utils/api";
 import { activateDeviceSession } from "../utils/deviceStorage";
 
 export default function OtpVerification() {
@@ -104,8 +104,14 @@ export default function OtpVerification() {
 
 			const data = await response.json();
 			if (data.message === "Verified Success") {
+				if (data.data?.mustChangePassword) {
+					navigate("/change-initial-password", { replace: true, state: { email: data.data.email || email } });
+					return;
+				}
 				if (data.data?.accessToken) {
 					setStoredAccessToken(data.data.accessToken);
+				} else {
+					setStoredSessionExpiry();
 				}
 				const { ...userData } = data.data || {};
 				activateDeviceSession(userData);
