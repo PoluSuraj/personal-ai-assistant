@@ -112,8 +112,8 @@ export default function AdminLayout() {
   );
 
   return (
-    <Flex minH="100dvh" bg={shellBg} direction={{ base: "column", md: "row" }}>
-      <Box display={{ base: "none", md: "block" }} w="280px" bg={sidebarBg} borderRightWidth="1px" borderColor={borderColor} p={5}>
+    <Flex h="100dvh" minH={0} overflow="hidden" bg={shellBg} direction={{ base: "column", md: "row" }}>
+      <Box display={{ base: "none", md: "block" }} flex="0 0 280px" h="100dvh" overflowY="auto" bg={sidebarBg} borderRightWidth="1px" borderColor={borderColor} p={5}>
         <VStack align="stretch" spacing={6} h="full">
           <VStack align="start" spacing={3}>
             <Avatar name={user.name} src={user.avatar} size="lg" />
@@ -133,8 +133,8 @@ export default function AdminLayout() {
         </VStack>
       </Box>
 
-      <Flex flex="1" direction="column" minW={0}>
-        <Box px={{ base: 4, md: 8 }} py={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor={borderColor} bg={panelBg} backdropFilter="blur(18px)">
+      <Flex flex="1" h="100dvh" minH={0} minW={0} direction="column">
+        <Box flex="0 0 auto" px={{ base: 4, md: 8 }} py={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor={borderColor} bg={panelBg} backdropFilter="blur(18px)">
           <HStack justify="space-between" align="start">
             <HStack spacing={3} align="start">
               <IconButton
@@ -154,7 +154,7 @@ export default function AdminLayout() {
             </Tooltip>
           </HStack>
         </Box>
-        <Box flex="1" overflowY="auto"><Outlet /></Box>
+        <Box flex="1" minH={0} minW={0} overflowY="auto" overflowX="hidden" overscrollBehavior="contain" sx={{ scrollbarGutter: "stable" }}><Outlet /></Box>
       </Flex>
 
       <Drawer placement="left" onClose={onClose} isOpen={isOpen}>
