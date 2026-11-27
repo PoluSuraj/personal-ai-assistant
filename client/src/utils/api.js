@@ -48,13 +48,13 @@ export const setStoredAccessToken = (token) => {
   window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
   try {
     const payload = JSON.parse(window.atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    setStoredSessionExpiry(payload.exp ? payload.exp * 1000 : Date.now() + 60 * 60 * 1000);
+    setStoredSessionExpiry(payload.exp ? payload.exp * 1000 : Date.now() + 30 * 24 * 60 * 60 * 1000);
   } catch {
-    setStoredSessionExpiry(Date.now() + 60 * 60 * 1000);
+    setStoredSessionExpiry(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
 };
 
-export const setStoredSessionExpiry = (expiresAt = Date.now() + 60 * 60 * 1000) => {
+export const setStoredSessionExpiry = (expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(SESSION_EXPIRY_STORAGE_KEY, String(expiresAt));
 };

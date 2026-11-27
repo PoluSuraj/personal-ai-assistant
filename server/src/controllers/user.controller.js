@@ -124,7 +124,12 @@ const loginUser = asyncHandler(async (req, res) => {
         ensureDemoUser();
         const user = validateDemoLogin({ email: emailOrUsername, password });
         if (!user) throw new ApiError(403, "Invalid demo credentials. Try demo@local.test / Password@123");
-        return res.status(200).json(new ApiResponse(200, { email: user.email, demoOtp: "123456" }, "Demo OTP generated. Use 123456."));
+        return res
+            .status(200)
+            .cookie("accessToken", "demo-access-token", accessTokenOptions)
+            .cookie("refreshToken", "demo-refresh-token", refreshTokenOptions)
+            .cookie("demoUserId", user._id, accessTokenOptions)
+            .json(new ApiResponse(200, user, "Signed in successfully."));
     }
 
     // Find user by email or username
@@ -145,25 +150,24 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Invalid credentials");
     }
 
-    // Login step 1: password verified -> send OTP to email (do not issue tokens yet)
-    const otp = crypto.randomInt(100000, 1000000);
-    const otpDelivery = await sendOtpMail(user.email, otp).catch((err) => {
-        console.error("Failed to send login OTP email:", err.message);
-        return { sent: false };
-    });
-    if (!otpDelivery?.sent && process.env.NODE_ENV === "production") {
-        await OtpSchema.deleteOne({ email: user.email });
-        throw new ApiError(503, "We could not send a verification code. Please try again later.");
+    if (!user.isEmailVerified) {
+        throw new ApiError(403, "Verify your email address before signing in. Check your inbox for the verification code.");
     }
-    await OtpSchema.findOneAndUpdate(
-        { email: user.email },
-        { $set: { otp: String(otp), expiresAt: new Date(Date.now() + OTP_LIFETIME_MS) } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
 
+    if (user.mustChangePassword) {
+        return res.status(200).json(new ApiResponse(200, {
+            email: user.email,
+            mustChangePassword: true,
+        }, "Change your temporary password to continue"));
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const safeUser = await User.findById(user._id).select("-password -refreshToken");
     return res
         .status(200)
-        .json(new ApiResponse(200, { email: user.email, devOtp: otpDelivery?.sent ? undefined : String(otp) }, otpDelivery?.sent ? "OTP sent to email. Verify OTP to complete login." : "Development OTP generated. Verify it to complete login."));
+        .cookie("accessToken", accessToken, accessTokenOptions)
+        .cookie("refreshToken", refreshToken, refreshTokenOptions)
+        .json(new ApiResponse(200, { ...safeUser.toObject(), isAdmin: isAdminUser(safeUser), accessToken, refreshToken }, "Signed in successfully."));
 });
 
 
@@ -172,7 +176,7 @@ const registerWithGoogle = asyncHandler(async (req, res) => {
 })
 
 const loginWithGoogle = asyncHandler(async (req, res) => {
-    throw new ApiError(501, "Google sign-in is unavailable until provider identity verification is configured. Use email and password with OTP instead.");
+    throw new ApiError(501, "Google sign-in is unavailable until provider identity verification is configured. Use email and password instead.");
 })
 
 

@@ -1,6 +1,6 @@
 const DB_Name = "AI_TUTOR";
-const accessTokenAge = 60 * 60 * 1000;
-const refreshTokenAge = 60 * 60 * 1000;
+const accessTokenAge = 30 * 24 * 60 * 60 * 1000;
+const refreshTokenAge = 60 * 24 * 60 * 60 * 1000;
 
 const accessTokenOptions = {
     httpOnly: true,

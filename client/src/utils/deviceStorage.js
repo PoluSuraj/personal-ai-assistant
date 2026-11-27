@@ -31,7 +31,7 @@ export const setStorageMode = (mode, profile) => {
   window.localStorage.setItem(MODE_KEY, mode === "device" ? "device" : "account");
   if (mode === "device" && profile?.email) {
     saveDeviceProfile(profile);
-    window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, String(Date.now() + 60 * 60 * 1000));
+    window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, String(Date.now() + 30 * 24 * 60 * 60 * 1000));
   } else if (profile?.email) {
     clearDeviceSession(profile.email);
   }
@@ -40,7 +40,7 @@ export const setStorageMode = (mode, profile) => {
 export const activateDeviceSession = (profile) => {
   if (!isDeviceStorageEnabled() || !profile?.email) return;
   saveDeviceProfile(profile);
-  window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, String(Date.now() + 60 * 60 * 1000));
+  window.localStorage.setItem(`${SESSION_PREFIX}${identityKey(profile.email)}`, String(Date.now() + 30 * 24 * 60 * 60 * 1000));
 };
 
 export const hasDeviceSession = (email) => {
